@@ -12,19 +12,62 @@ export default class BlakullaService {
         this.twitch = new TwitchService();
         this.auth = new Authentication(null, null);
     }
-
-    async testAsync() {
-        return await this.auth.apiGet("test");
-    }
-
-    async getGameStateAsync() {
+    
+    async getStateAsync() {
         try {
             const result = await this.auth.apiGet("state");
             if (result && result.ok) {
                 console.log("game state received: " + result.json());
                 return result.json;
+            } else {
+                console.error("getStateAsync failed, uknown reason.");
             }
-        } catch (err) { }
+        } catch (err) { 
+            console.error(err);
+        }
+        return null;
+    }
+
+    async joinAsync(name: string) {
+        try {
+            const result = await this.auth.apiPost("join", {name});
+            if (result && result.ok) {
+                return result.json;
+            } else {
+                console.error("joinAsync failed, uknown reason.");
+            }
+        } catch (err) {
+            console.error(err);
+        }
+        return null;
+    }
+
+    async voteAsync(value: string) {
+        try {
+            const result = await this.auth.apiPost("vote", {value});
+            if (result && result.ok) {
+                return result.json;
+            } else {
+                console.error("voteAsync failed, uknown reason.");
+            }
+        } catch (err) {
+            console.error(err);
+        }
+        return null;
+    }
+
+    
+    async leaveAsync(name: string) {
+        try {
+            const result = await this.auth.apiPost("leave");
+            if (result && result.ok) {
+                return result.json;
+            } else {
+                console.error("leaveAsync failed, uknown reason.");
+            }
+        } catch (err) {
+            console.error(err);
+        }
         return null;
     }
 

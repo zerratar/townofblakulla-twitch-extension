@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using TownOfBlakulla.Core;
+using TownOfBlakulla.Core.Handlers;
 using TwitchLib.Extension;
 using TwitchLib.Extension.Core.Authentication;
 using TwitchLib.Extension.Core.ExtensionsManager;
@@ -35,6 +30,11 @@ namespace TownOfBlakulla.EBS
                 options.AddPolicy("AllowAllMethods", builder => builder.AllowAnyMethod());
                 options.AddPolicy("AllowAllHeaders", builder => builder.AllowAnyHeader());
             });
+
+            services.AddSingleton<ITwitchAuth, TwitchAuth>();
+            services.AddSingleton<IActionQueue, ActionQueue>();
+            services.AddSingleton<IPlayerHandler, PlayerHandler>();
+            services.AddSingleton<IGame, Game>();
 
             services
                 .AddAuthentication()
@@ -70,14 +70,13 @@ namespace TownOfBlakulla.EBS
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowAnyOrigin());
-            
-            //app.UseStaticFiles(); // For the wwwroot folder
 
-            app.UseStaticFiles(new StaticFileOptions
-            {
-                FileProvider = new PhysicalFileProvider("G:\\git\\townofblakulla\\extension-getting-started\\public"),
-                RequestPath = ""
-            });
+            //app.UseStaticFiles(); // For the wwwroot folder
+            //app.UseStaticFiles(new StaticFileOptions
+            //{
+            //    FileProvider = new PhysicalFileProvider("G:\\git\\townofblakulla\\extension-getting-started\\public"),
+            //    RequestPath = ""
+            //});
 
             app.UseDefaultFiles();
             app.UseMvc();

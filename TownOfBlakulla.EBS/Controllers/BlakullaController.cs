@@ -1,89 +1,37 @@
-﻿using System;
-using System.Linq;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using TwitchLib.Extension;
+﻿using Microsoft.AspNetCore.Mvc;
+using TownOfBlakulla.Core;
+using TownOfBlakulla.Core.Models;
 
 namespace TownOfBlakulla.EBS.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize(AuthenticationSchemes = "TwitchExtensionAuth", Policy = "TownofBlakullaAuth")]
     public class BlakullaController : ControllerBase
     {
-        private readonly ExtensionManager extensionManager;
+        private readonly ITwitchAuth auth;
+        private readonly IGame game;
 
-        public BlakullaController(ExtensionManager extensionManager)
+        public BlakullaController(ITwitchAuth auth, IGame game)
         {
-            this.extensionManager = extensionManager;
-        }
-        [HttpPost("test")]
-        public string Test1()
-        {
-            if (!Request.Headers.ContainsKey("Authorization"))
-            {
-                return "NOT OK";
-            }
-
-            //string jwt = Request.Headers["x-extension-jwt"];
-            string auth = Request.Headers["Authorization"];
-            if (string.IsNullOrEmpty(auth)) return "NOT OK";
-
-            if (auth.StartsWith("bearer", StringComparison.InvariantCultureIgnoreCase))
-                auth = auth.Substring(auth.IndexOf(" ")).Trim();
-
-            var extension = this.extensionManager.GetExtension("4bsfmhaxm72zd5izc8dj2ru7mqpmi0");
-            var principal = extension.Verify(auth, out var validTokenOverlay);
-
-
-
-            var userId = principal.Claims.FirstOrDefault(x => x.Type == "user_id");
-            var channelId = principal.Claims.FirstOrDefault(x => x.Type == "channel_id");
-            var extensionId = principal.Claims.FirstOrDefault(x => x.Type == "extension_id");
-
-            //this.extensionManager.GetExtension()
-
-            if (userId == null || channelId == null)
-            {
-                return "NOT OK";
-            }
-
-            return $"OK! {userId.Value}";
+            this.auth = auth;
+            this.game = game;
         }
 
-        [HttpGet("test")]
-        public string Test()
+        [HttpGet("state")]
+        public GameStateResponse GetGameState()
         {
-            if (!Request.Headers.ContainsKey("Authorization"))
-            {
-                return "NOT OK";
-            }
+            if (!TryGetViewer(out var user))
+                return null;
 
-            //string jwt = Request.Headers["x-extension-jwt"];
-            string auth = Request.Headers["Authorization"];
-            if (string.IsNullOrEmpty(auth)) return "NOT OK";
-
-            if (auth.StartsWith("bearer", StringComparison.InvariantCultureIgnoreCase))
-                auth = auth.Substring(auth.IndexOf(" ")).Trim();
-
-            var extension = this.extensionManager.GetExtension("4bsfmhaxm72zd5izc8dj2ru7mqpmi0");
-            var principal = extension.Verify(auth, out var validTokenOverlay);
-
-
-
-            var userId = principal.Claims.FirstOrDefault(x => x.Type == "user_id");
-            var channelId = principal.Claims.FirstOrDefault(x => x.Type == "channel_id");
-            var extensionId = principal.Claims.FirstOrDefault(x => x.Type == "extension_id");
-
-            //this.extensionManager.GetExtension()
-
-            if (userId == null || channelId == null)
-            {
-                return "NOT OK";
-            }
-
-            return $"OK! {userId.Value}";
+            return this.game.GetState(user);
         }
 
+        private bool TryGetViewer(out TwitchViewer user)
+        {
+            user = null;
+            return
+                Request.Headers.ContainsKey("Authorization") &&
+                auth.Validate(Request.Headers["Authorization"], out user);
+        }
     }
 }
