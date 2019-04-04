@@ -9,7 +9,6 @@ export default class TwitchComponentState {
     
     [key: string]: any;
     public test: any = null;
-    public username: any = null;
     public theme: string = "";
     public isVisible: boolean = true;
     public finishedLoading: boolean = false;

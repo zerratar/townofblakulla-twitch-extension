@@ -84,7 +84,7 @@ export default class Authentication {
      * Returns a Promise with the Request() object per fetch documentation.
      *
      */
-    makeCall(url: string, method = "GET", data: any = null) {
+    makeCall(url: string, method = "GET", data: any = null): Promise<Response> {
         return new Promise((resolve, reject) => {
             if (this.isAuthenticated()) {
                 let headers = {
