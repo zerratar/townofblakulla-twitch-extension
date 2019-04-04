@@ -1,16 +1,19 @@
 import * as React from "react";
 
-import TwitchComponentState from "../twitch-component-state";
+import GameState from "../game-state";
 import BlakullaService from "../blakulla-service";
 
 export interface AppProps { compiler: string; framework: string; }
 
-export class App extends React.Component<AppProps, TwitchComponentState> {
+export class App extends React.Component<AppProps, GameState> {
     private readonly service: BlakullaService;
     constructor(props: AppProps) {
         super(props);
         this.service = new BlakullaService();
-        this.state = new TwitchComponentState();
+        this.state = new GameState();
+        this.leaveGameAsync = this.leaveGameAsync.bind(this);
+        this.joinGameAsync = this.joinGameAsync.bind(this);
+        this.onNameChanged = this.onNameChanged.bind(this);        
     }
 
 // <div className={this.state.theme === "light" ? "App-light" : "App-dark"} >
@@ -24,9 +27,20 @@ export class App extends React.Component<AppProps, TwitchComponentState> {
 
     render() {
         if (this.service.isReady) {
+
+            const joinleave = this.state.joined
+                ? <button onClick={this.leaveGameAsync}>Leave game</button>
+                : this.state.state == 0 
+                    ? <button onClick={this.joinGameAsync}>Join game</button>
+                    : <div>Oh, darnit! Game is not running.</div>;
+
+            const inputName = this.state.state == 0 && !this.state.joined
+                ? <input value={this.state.name} onChange={this.onNameChanged} />
+                : null;
+
             return (
                 <div className="App">
-
+                    Town of Blåkulla, {inputName} {joinleave}
                 </div>
             )
         } else {
@@ -63,16 +77,22 @@ export class App extends React.Component<AppProps, TwitchComponentState> {
                     return;
                 }
 
+                // result: {  "hasJoined": false|true, "state": 0|1|2  }
+
+                this.setState(() => {
+                    return { joined: result.hasJoined, state: result.state };
+                })
                 console.log(JSON.stringify(result));
 
                 // the result of this should be whether game is: joinable | in progress | not started
                 // also: am I in game? true | false
-                
+
                 // if joinable, show join button (anonymous | keep-track), keep-track can refresh website without leaving game. 
                 //      anonymous will open slot for 1 day+1 night when leaving game. then character has commited suicide. Character can also be killed
                 //      during that period of time. It is possible for anon to rejoin.
                 // if in progress or not started, queue for next game (only shared id)
                 // if in progress, leaving game is possible. But if player leaves on their own. Character commits suicide.
+
             });
 
             // this.service.leaveAsync()
@@ -83,7 +103,7 @@ export class App extends React.Component<AppProps, TwitchComponentState> {
             // this.service.updateDeathNoteAsync(text)
             // this.service.useAbilityAsync(id,arg0,arg1,argN...)
             // this.service.canUseAbilityAsync()
-
+            this.forceUpdate();
         },
             (visibility: boolean) => this.visibilityChanged(visibility),
             (context: any, delta: any) => this.contextUpdate(context, delta));
@@ -91,5 +111,26 @@ export class App extends React.Component<AppProps, TwitchComponentState> {
 
     componentWillUnmount() {
         this.service.dispose();
+    }
+
+    onNameChanged(e: React.ChangeEvent<HTMLInputElement>) {
+        const name = e.currentTarget.value;
+        this.setState(()=> {
+            return { name };
+        });
+    }
+
+    async joinGameAsync() {
+        if (!this.state.name || this.state.name == null || this.state.name.trim().length == 0) {                        
+            return;
+        }
+
+        console.log(`${this.state.name}, want to join the game, huh?`);
+        await this.service.joinAsync(this.state.name);
+    }
+
+    async leaveGameAsync(){
+        console.log("NOOOOO!!! Please don't leave :(");
+        await this.service.leaveAsync(); // BLA BLU :(
     }
 }

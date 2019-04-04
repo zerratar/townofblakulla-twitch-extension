@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 using TownOfBlakulla.Core;
 using TownOfBlakulla.Core.Models;
 
@@ -24,6 +25,33 @@ namespace TownOfBlakulla.EBS.Controllers
                 return null;
 
             return this.game.GetState(user);
+        }
+
+        [HttpPost("leave")]
+        public Task<LeaveResponse> LeaveGame()
+        {
+            if (!TryGetViewer(out var user))
+                return null;
+
+            return this.game.LeaveAsync(user);
+        }
+
+        [HttpPost("join")]
+        public Task<JoinResponse> JoinGame(string name)
+        {
+            if (!TryGetViewer(out var user))
+                return null;
+
+            return this.game.JoinAsync(user, name);
+        }
+
+        [HttpPost("vote")]
+        public Task<VoteResponse> Vote(string value)
+        {
+            if (!TryGetViewer(out var user))
+                return null;
+
+            return this.game.VoteAsync(user, value);
         }
 
         private bool TryGetViewer(out TwitchViewer user)

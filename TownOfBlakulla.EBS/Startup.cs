@@ -31,6 +31,7 @@ namespace TownOfBlakulla.EBS
                 options.AddPolicy("AllowAllHeaders", builder => builder.AllowAnyHeader());
             });
 
+            services.AddSingleton<ILogger, ConsoleLogger>();
             services.AddSingleton<ITwitchAuth, TwitchAuth>();
             services.AddSingleton<IActionQueue, ActionQueue>();
             services.AddSingleton<IPlayerHandler, PlayerHandler>();

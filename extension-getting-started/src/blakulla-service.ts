@@ -12,13 +12,14 @@ export default class BlakullaService {
         this.twitch = new TwitchService();
         this.auth = new Authentication(null, null);
     }
-    
+
     async getStateAsync() {
         try {
             const result = await this.auth.apiGet("state");
             if (result && result.ok) {
-                console.log("game state received: " + result.json());
-                return result.json;
+                const jsonResult = await result.json();
+                console.log(`game state received! ${jsonResult}`);
+                return jsonResult;
             } else {
                 console.error("getStateAsync failed, uknown reason.");
             }
@@ -32,7 +33,7 @@ export default class BlakullaService {
         try {
             const result = await this.auth.apiPost("join", {name});
             if (result && result.ok) {
-                return result.json;
+                return await result.json();
             } else {
                 console.error("joinAsync failed, uknown reason.");
             }
@@ -46,7 +47,7 @@ export default class BlakullaService {
         try {
             const result = await this.auth.apiPost("vote", {value});
             if (result && result.ok) {
-                return result.json;
+                return await result.json();
             } else {
                 console.error("voteAsync failed, uknown reason.");
             }
@@ -55,13 +56,12 @@ export default class BlakullaService {
         }
         return null;
     }
-
     
-    async leaveAsync(name: string) {
+    async leaveAsync() {
         try {
             const result = await this.auth.apiPost("leave");
             if (result && result.ok) {
-                return result.json;
+                return await result.json();
             } else {
                 console.error("leaveAsync failed, uknown reason.");
             }
