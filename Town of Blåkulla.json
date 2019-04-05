@@ -1,7 +1,7 @@
 {
   "allowHttpBackend": false,
   "backendCommand": "node backend -c \"4bsfmhaxm72zd5izc8dj2ru7mqpmi0\" -s \"jRNt+mbviSB3BB2K6Vf3mTra+DarsARd58NuQxz0ekM=\"",
-  "backendFolderName": "extension-getting-started\\services",
+  "backendFolderName": "TownOfBlakulla\\services",
   "extensionViews": [
     {
       "id": "1",
@@ -87,6 +87,6 @@
     "whitelistedPanelUrls": []
   },
   "frontendCommand": "",
-  "frontendFolderName": "extension-getting-started\\public",
+  "frontendFolderName": "TownOfBlakulla\\public",
   "name": "Town of Blåkulla"
 }
