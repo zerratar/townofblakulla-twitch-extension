@@ -12,6 +12,6 @@ export default class GameState {
     public name: string = "";
     public joined: boolean = false;
     public state: number = -1;
-    public isVisible: boolean = true;
+    public isVisible: boolean = false;
     public finishedLoading: boolean = false;
 }

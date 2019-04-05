@@ -1,0 +1,7 @@
+https://medium.com/@tommybernaciak/css-modules-for-react-and-typescript-2dd8f0fd7cdd
+
+
+
+npm install image-webpack-loader --save-dev
+
+npm i json-parse-better-errors

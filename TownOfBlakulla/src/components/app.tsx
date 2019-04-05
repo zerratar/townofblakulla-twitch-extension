@@ -2,8 +2,17 @@ import * as React from "react";
 
 import GameState from "../game-state";
 import BlakullaService from "../blakulla-service";
+import { ToggleOverlayButton } from "./toggle-overlay-button";
 
-export interface AppProps { compiler: string; framework: string; }
+import "./app.scss";
+
+export interface AppProps { }
+
+export enum GameStateType {
+    JOINABLE = 0,
+    STARTED = 1,
+    NOT_STARTED = 2
+}
 
 export class App extends React.Component<AppProps, GameState> {
     private readonly service: BlakullaService;
@@ -13,43 +22,94 @@ export class App extends React.Component<AppProps, GameState> {
         this.state = new GameState();
         this.leaveGameAsync = this.leaveGameAsync.bind(this);
         this.joinGameAsync = this.joinGameAsync.bind(this);
-        this.onNameChanged = this.onNameChanged.bind(this);        
+        this.onNameChanged = this.onNameChanged.bind(this);
+        this.visibilityChanged = this.visibilityChanged.bind(this);
     }
 
-// <div className={this.state.theme === "light" ? "App-light" : "App-dark"} >
-//     <p>{JSON.stringify(this.state.test)}</p>
-//     <p>Hello world!</p>
-//     <p>My token is: {this.service.auth.state.token}</p>
-//     <p>My opaque ID is {this.service.auth.getOpaqueId()}.</p>
-//     <div>{this.service.auth.isModerator() ? <p>I am currently a mod, and here's a special mod button <input value='mod button' type='button' /></p> : 'I am currently not a mod.'}</div>
-//     <p>I have {this.service.auth.hasSharedId() ? `shared my ID, and my user_id is ${this.service.auth.getUserId()}` : 'not shared my ID'}.</p>
-// </div>
+    // <div className={this.state.theme === "light" ? "App-light" : "App-dark"} >
+    //     <p>{JSON.stringify(this.state.test)}</p>
+    //     <p>Hello world!</p>
+    //     <p>My token is: {this.service.auth.state.token}</p>
+    //     <p>My opaque ID is {this.service.auth.getOpaqueId()}.</p>
+    //     <div>{this.service.auth.isModerator() ? <p>I am currently a mod, and here's a special mod button <input value='mod button' type='button' /></p> : 'I am currently not a mod.'}</div>
+    //     <p>I have {this.service.auth.hasSharedId() ? `shared my ID, and my user_id is ${this.service.auth.getUserId()}` : 'not shared my ID'}.</p>
+    // </div>
 
     render() {
-        if (this.service.isReady) {
 
-            const joinleave = this.state.joined
-                ? <button onClick={this.leaveGameAsync}>Leave game</button>
-                : this.state.state == 0 
-                    ? <button onClick={this.joinGameAsync}>Join game</button>
-                    : <div>Oh, darnit! Game is not running.</div>;
+        if (!this.service.isReady || this.state.state == -1 || this.state.state == GameStateType.NOT_STARTED) {
+            return (<div className="App"></div>);
+        }
 
-            const inputName = this.state.state == 0 && !this.state.joined
-                ? <input value={this.state.name} onChange={this.onNameChanged} />
-                : null;
+        if (this.state.isVisible) {
 
-            return (
-                <div className="App">
-                    Town of Blåkulla, {inputName} {joinleave}
-                </div>
-            )
+            if (this.state.joined) {
+                return this.renderGame();
+            }
+
+            if (this.state.state == GameStateType.JOINABLE) {
+                return this.renderJoinGame();
+            }
+
+            if (this.state.state == GameStateType.STARTED) {
+                return this.renderStartedGame();
+            }
+
+            return this.renderInvalidGameState(this.state.state);
         } else {
             return (
                 <div className="App">
-                    Loading...
+                    <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
                 </div>
             )
         }
+    }
+
+    renderGame() {
+        return (
+            <div className="App">
+                <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+                <button onClick={this.leaveGameAsync}>Leave</button>
+            </div>
+        )
+    }
+
+    renderJoinGame() {
+        return (
+            <div className="App">
+                <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+                <div className="join-panel">
+                    <div className="game-logo">
+                        <img src="./images/logo.png"></img>
+                    </div>
+
+                    <div className="join-panel-input">                        
+                        <img className="bg-image" src="./images/frame-tiny.png"></img>
+                        <input placeholder="Enter a name" value={this.state.name} onChange={this.onNameChanged} />
+                        <button onClick={this.joinGameAsync}>Join</button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    renderStartedGame() {
+        return (
+            <div className="App">
+                <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+                <div>Game has already started.</div>
+            </div>
+        )
+    }
+
+
+    renderInvalidGameState(state: number) {
+        return (
+            <div className="App">
+                <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+                <div>Invalid game state: {state}</div>
+            </div>
+        )
     }
 
     contextUpdate(context: any, delta: any) {
@@ -115,13 +175,13 @@ export class App extends React.Component<AppProps, GameState> {
 
     onNameChanged(e: React.ChangeEvent<HTMLInputElement>) {
         const name = e.currentTarget.value;
-        this.setState(()=> {
+        this.setState(() => {
             return { name };
         });
     }
 
     async joinGameAsync() {
-        if (!this.state.name || this.state.name == null || this.state.name.trim().length == 0) {                        
+        if (!this.state.name || this.state.name == null || this.state.name.trim().length == 0) {
             return;
         }
 
@@ -129,7 +189,7 @@ export class App extends React.Component<AppProps, GameState> {
         await this.service.joinAsync(this.state.name);
     }
 
-    async leaveGameAsync(){
+    async leaveGameAsync() {
         console.log("NOOOOO!!! Please don't leave :(");
         await this.service.leaveAsync(); // BLA BLU :(
     }

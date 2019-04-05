@@ -1,9 +1,15 @@
+const fs = require('fs')
+const path = require("path")
+const webpack = require("webpack")
+
 module.exports = {
     entry: "./src/index.tsx",
     output: {
         filename: "bundle.js",
         path: __dirname + "/public/dist"
     },
+
+    mode: "development",
 
     // Enable sourcemaps for debugging webpack's output.
     devtool: "source-map",
@@ -16,8 +22,13 @@ module.exports = {
     module: {
         rules: [
             // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
-            { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
+            {
+                test: /\.scss$/,
+                loaders: ['style-loader', 'css-loader', 'sass-loader']
+            },
 
+            { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
+            { test: /\.css$/, use: ['style-loader', 'css-loader'] },
             // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
             { enforce: "pre", test: /\.js$/, loader: "source-map-loader" }
         ]

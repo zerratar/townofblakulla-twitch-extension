@@ -4,9 +4,9 @@
   "backendFolderName": "TownOfBlakulla\\services",
   "extensionViews": [
     {
-      "id": "1",
+      "id": "4",
       "label": "Game",
-      "channelId": "265737932",
+      "channelId": "72424639",
       "displayChannelName": "zerratar",
       "type": "video_overlay",
       "features": {
