@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using TownOfBlakulla.Core;
 using TownOfBlakulla.Core.Handlers;
 using TwitchLib.Extension;
@@ -12,6 +13,14 @@ using TwitchLib.Extension.Core.ExtensionsManager;
 
 namespace TownOfBlakulla.EBS
 {
+    public class AppSettings
+    {
+        public string ExtensionOwnerId { get; set; }
+        public string ExtensionVersionNumber { get; set; }
+        public string ExtensionId { get; set; }
+        public string ExtensionSecret { get; set; }
+    }
+
     public class Startup
     {
         public Startup(IConfiguration configuration)
@@ -35,7 +44,11 @@ namespace TownOfBlakulla.EBS
             services.AddSingleton<ITwitchAuth, TwitchAuth>();
             services.AddSingleton<IActionQueue, ActionQueue>();
             services.AddSingleton<IPlayerHandler, PlayerHandler>();
+            services.AddSingleton<IChatHandler, ChatHandler>();
             services.AddSingleton<IGame, Game>();
+
+            var configurationSection = Configuration.GetSection("AppSettings");
+            services.Configure<AppSettings>(configurationSection);
 
             services
                 .AddAuthentication()
@@ -45,11 +58,10 @@ namespace TownOfBlakulla.EBS
             {
                 options.AddPolicy("TownofBlakullaAuth",
                     policy => policy.RequireClaim("extension_id",
-                        "4bsfmhaxm72zd5izc8dj2ru7mqpmi0"
+                        configurationSection["ExtensionOwnerId"]
                     )
                 );
             });
-
 
             services.AddTwitchExtensionManager();
 
@@ -72,25 +84,19 @@ namespace TownOfBlakulla.EBS
                     .AllowAnyMethod()
                     .AllowAnyOrigin());
 
-            //app.UseStaticFiles(); // For the wwwroot folder
-            //app.UseStaticFiles(new StaticFileOptions
-            //{
-            //    FileProvider = new PhysicalFileProvider("G:\\git\\townofblakulla\\extension-getting-started\\public"),
-            //    RequestPath = ""
-            //});
-
             app.UseDefaultFiles();
             app.UseMvc();
 
+            var settings = app.ApplicationServices.GetService<IOptions<AppSettings>>()?.Value ?? new AppSettings();
             app.UseTwitchExtensionManager(app.ApplicationServices, new Dictionary<string, ExtensionBase>
             {
                 {
-                    "4bsfmhaxm72zd5izc8dj2ru7mqpmi0",
+                    settings.ExtensionId,
                     new StaticSecretExtension( new ExtensionConfiguration {
-                        Id = "4bsfmhaxm72zd5izc8dj2ru7mqpmi0",
-                        OwnerId= "zerratar",
-                        VersionNumber ="0.0.1",//e.g. 0.0.1
-                        StartingSecret = "jRNt+mbviSB3BB2K6Vf3mTra+DarsARd58NuQxz0ekM="
+                        Id = settings.ExtensionId,
+                        OwnerId = settings.ExtensionOwnerId,
+                        VersionNumber = settings.ExtensionVersionNumber,
+                        StartingSecret = settings.ExtensionSecret
                     })
                 }
             });

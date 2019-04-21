@@ -1,24 +1,47 @@
 import Authentication from "./authentication";
 import TwitchService from "./twitch-service";
 import BlakullaServiceConnection from "./blakulla-service-connection";
+import { string } from "prop-types";
 
 export default class BlakullaService {
     public readonly auth: Authentication = null;
     private readonly twitch: TwitchService = null;
     private readonly connection: BlakullaServiceConnection = null;
+    private lastChatMessage: string = BlakullaService.utcNow();
+    private stateRevision: number = 0;
+    private loadingCounter: number = 0;
+
+    public chatMessageEvent: Subject<ChatMessage> = new Subject<ChatMessage>();    
+    public loadingEvent: Subject<boolean> = new Subject<boolean>();
 
     constructor() {
         this.connection = new BlakullaServiceConnection();
         this.twitch = new TwitchService();
         this.auth = new Authentication(null, null);
     }
+    
+    public isMafia(role:string): boolean {        
+        return [
+                "Janitor", "Godfather", "Blackmailer", "Mafioso",
+                "Ambusher", "Consigliere", "Consort", "Hypnotist",
+                "Framer", "Forger", "Disguiser"
+            ].includes(role);
+    }
+
+    public isMedium(role:string): boolean {
+        return role == "medium";
+    }
 
     async getStateAsync() {
         try {
-            const result = await this.auth.apiGet("state");
+            const result = await this.auth.apiGet(`state/${this.stateRevision}`);
             if (result && result.ok) {
                 const jsonResult = await result.json();
-                console.log(`game state received! ${jsonResult}`);
+
+                if (jsonResult != null) {
+                    this.stateRevision = jsonResult.revision;
+                }
+                
                 return jsonResult;
             } else {
                 console.error("getStateAsync failed, uknown reason.");
@@ -29,8 +52,55 @@ export default class BlakullaService {
         return null;
     }
 
+    async getChatMessagesAsync(channel: string) {        
+        if (!channel) {
+            return;
+        }
+
+        try {            
+            const result = await this.auth.apiGet(`chat/${channel}/${this.lastChatMessage}`);
+            if (result && result.ok) {
+                const jsonResult = await result.json();
+
+                if (jsonResult != null && jsonResult.length > 0) {
+                    this.lastChatMessage = jsonResult[jsonResult.length - 1].timeSent;
+                    for(const msg of jsonResult) {
+                        this.chatMessageEvent.next(msg);
+                    }
+                }
+                
+                return jsonResult;
+            } else {
+                console.error("getChatMessages failed, uknown reason.");
+            }
+        } catch (err) { 
+            console.error(err);
+        }
+        return null;
+    }
+
+    async sendChatMessageAsync(channel: string, message: string) : Promise<ChatMessage> {
+        try {            
+            this.beginLoading();
+            const result = await this.auth.apiPost("chat", {channel, message});
+            if (result && result.ok) {
+                const value = await result.json();
+                this.chatMessageEvent.next(value);
+                return value;
+            } else {
+                console.error("sendChatMessageAsync failed, uknown reason.");
+            }
+        } catch (err) {
+            console.error(err);
+        } finally { 
+            this.endLoading();
+        }
+        return null;   
+    }
+
     async joinAsync(name: string) {
-        try {
+        try {            
+            this.beginLoading();
             const result = await this.auth.apiPost("join", {name});
             if (result && result.ok) {
                 return await result.json();
@@ -39,12 +109,15 @@ export default class BlakullaService {
             }
         } catch (err) {
             console.error(err);
+        } finally { 
+            this.endLoading();
         }
         return null;
     }
 
     async voteAsync(value: string) {
         try {
+            this.beginLoading();
             const result = await this.auth.apiPost("vote", {value});
             if (result && result.ok) {
                 return await result.json();
@@ -53,12 +126,15 @@ export default class BlakullaService {
             }
         } catch (err) {
             console.error(err);
+        } finally { 
+            this.endLoading();
         }
         return null;
     }
     
     async leaveAsync() {
         try {
+            this.beginLoading();
             const result = await this.auth.apiPost("leave");
             if (result && result.ok) {
                 return await result.json();
@@ -67,6 +143,8 @@ export default class BlakullaService {
             }
         } catch (err) {
             console.error(err);
+        }  finally { 
+            this.endLoading();
         }
         return null;
     }
@@ -117,5 +195,87 @@ export default class BlakullaService {
     get isReady(): boolean {
         return this.twitch && this.auth && this.auth.isAuthenticated();
     }
+
+    get isLoading(): boolean {
+        return this.loadingCounter > 0;
+    }
+
+    static utcNow(): string {
+        const date = new Date();
+        const year = date.getUTCFullYear();
+        const month = BlakullaService.getLeftPaddedNumber(date.getUTCMonth()+1);
+        const day = BlakullaService.getLeftPaddedNumber(date.getUTCDate());
+        const hour = BlakullaService.getLeftPaddedNumber(date.getUTCHours());
+        const minutes =BlakullaService.getLeftPaddedNumber(date.getUTCMinutes());
+        const seconds = BlakullaService.getLeftPaddedNumber(date.getUTCSeconds());
+        return `${year}-${month}-${day}T${hour}:${minutes}:${seconds}Z`;
+    } 
+
+    private static getLeftPaddedNumber(value: number): string {
+        return value < 10 ? `0${value}` : `${value}`
+    }
+
+    private beginLoading(): void {
+        ++this.loadingCounter;
+        this.loadingEvent.next(this.isLoading);
+    }
+    private endLoading(): void {
+        --this.loadingCounter;
+        this.loadingEvent.next(this.isLoading);
+    }    
 }
 
+export class Subject<T> {
+    private readonly subscriptions: Subscription<T>[] = [];
+
+    constructor() {}
+
+    subscribe(callback: (value:T)=>void): Subscription<T> {
+        const sub = new Subscription<T>(this, callback);
+        this.subscriptions.push(sub);
+        return sub;
+    }
+
+    next(value: T) {
+        this.subscriptions.forEach(x => x.invoke(value));
+    }
+
+    unsubscribe(sub:Subscription<T>) {
+        const index = this.subscriptions.indexOf(sub);
+        if (index >= 0) {}
+            this.subscriptions.splice(index, 1);
+    }
+}
+
+export class Subscription<T> {
+    constructor(
+        private readonly subject: Subject<T>,
+        private readonly callback: (value: T)=>void) {
+    }
+
+    invoke(value: T) {
+        if (this.callback) {
+            this.callback(value);
+        }
+    }
+    
+    unsubscribe() {
+        this.subject.unsubscribe(this);
+    }
+}
+
+export class ChatMessage {
+    constructor(
+        public readonly timeSent: Date,
+        public readonly sender: string,
+        public readonly channel: string,
+        public readonly message: string) {
+    }
+}
+
+export enum GameStateType {
+    JOINABLE = 0,
+    STARTED = 1,
+    NOT_STARTED = 2,
+    INVALID = -1
+}

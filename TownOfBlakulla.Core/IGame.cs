@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using TownOfBlakulla.Core.Models;
 
 namespace TownOfBlakulla.Core
@@ -7,12 +9,18 @@ namespace TownOfBlakulla.Core
     {
         void Update(UpdateGameStateRequest request);
 
+        void PushMessages(MessageRequest request);
+
         GameStateResponse GetState(TwitchViewer viewerContext);
+
+        Task<GameStateResponse> GetStateAsync(TwitchViewer viewerContext, int revision);
 
         Task<LeaveResponse> LeaveAsync(TwitchViewer viewerContext);
 
         Task<JoinResponse> JoinAsync(TwitchViewer viewerContext, string name);
 
         Task<VoteResponse> VoteAsync(TwitchViewer viewerContext, string value);
+
+        Task<ChatMessage> SendChatMessageAsync(TwitchViewer viewerContext, string channel, string message);
     }
 }

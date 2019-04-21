@@ -86,13 +86,12 @@ export default class Authentication {
      */
     makeCall(url: string, method = "GET", data: any = null): Promise<Response> {
         return new Promise((resolve, reject) => {
-            if (this.isAuthenticated()) {
-                let headers = {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.state.token}`
-                };
-                
-                if (data != null && method == "POST") {
+            if (this.isAuthenticated()) {                                
+                if (data != null && method == "POST") {                    
+                    let headers = {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.state.token}`
+                    };
                     fetch(url, {
                         method,
                         headers,
@@ -101,6 +100,9 @@ export default class Authentication {
                         .then(response => resolve(response))
                         .catch(e => reject(e));
                 } else {
+                    let headers = {
+                        'Authorization': `Bearer ${this.state.token}`
+                    };                    
                     fetch(url, {
                         method,
                         headers,

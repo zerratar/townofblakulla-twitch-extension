@@ -24,6 +24,12 @@ namespace TownOfBlakulla.EBS.Controllers
             this.game.Update(request);
         }
 
+        [HttpPost("messages")]
+        public void PushMessages(MessageRequest request)
+        {
+            this.game.PushMessages(request);
+        }
+
         [HttpGet("poll")]
         public async Task<GameAction> PollAsync()
         {

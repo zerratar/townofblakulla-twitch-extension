@@ -17,5 +17,10 @@
 
 
         public string Identifier => UserId ?? OpaqueUserId;
+
+        public override int GetHashCode()
+        {
+            return Identifier.GetHashCode();
+        }
     }
 }

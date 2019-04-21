@@ -1,21 +1,21 @@
 import * as React from "react";
 
-import GameState from "../game-state";
-import BlakullaService from "../blakulla-service";
+import GameState, { GameInfo } from "../game-state";
+import BlakullaService, { ChatMessage, GameStateType, Subscription } from "../blakulla-service";
 import { ToggleOverlayButton } from "./toggle-overlay-button";
 
 import "./app.scss";
+import Day from "./phases/day";
+import Night from "./phases/night";
 
 export interface AppProps { }
 
-export enum GameStateType {
-    JOINABLE = 0,
-    STARTED = 1,
-    NOT_STARTED = 2
-}
-
 export class App extends React.Component<AppProps, GameState> {
     private readonly service: BlakullaService;
+    private chatSubscription: Subscription<ChatMessage> = null;
+    stateTimer: number;
+    chatTimer: number;
+    
     constructor(props: AppProps) {
         super(props);
         this.service = new BlakullaService();
@@ -37,7 +37,7 @@ export class App extends React.Component<AppProps, GameState> {
 
     render() {
 
-        if (!this.service.isReady || this.state.state == -1 || this.state.state == GameStateType.NOT_STARTED) {
+        if (!this.service.isReady || this.state.state == GameStateType.INVALID || this.state.state == GameStateType.NOT_STARTED) {
             return (<div className="App"></div>);
         }
 
@@ -56,25 +56,60 @@ export class App extends React.Component<AppProps, GameState> {
             }
 
             return this.renderInvalidGameState(this.state.state);
-        } else {
-            return (
-                <div className="App">
-                    <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
-                </div>
-            )
         }
-    }
 
-    renderGame() {
         return (
             <div className="App">
                 <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
-                <button onClick={this.leaveGameAsync}>Leave</button>
-            </div>
-        )
+            </div>);
+    }
+
+    renderGame() {
+        let leave = <button onClick={this.leaveGameAsync}>Leave</button>;
+        let phase = null;
+        
+        if (this.state.game != null) {
+            switch(this.state.game.phase) {
+                case "Day":                    
+                    phase = <Day 
+                        service={this.service} 
+                        gameState={this.state} 
+                        channel={this.getDayChatChannel()} />;
+                    break;
+                case "Night":
+                    phase = <Night 
+                        service={this.service} 
+                        gameState={this.state} 
+                        channel={this.getNightChatChannel()} />;
+                    break;
+            }
+        }
+
+        if (this.state.waitForLeave) {
+            leave = <p></p>;
+            phase = <p></p>;
+        }      
+
+        return (<div className="App">
+                    <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+                    {leave}
+                    {phase}                
+                </div>);
     }
 
     renderJoinGame() {
+
+        let join = 
+            (<div className="join-panel-input">
+                <img className="bg-image" src="./images/frame-tiny.png"></img>
+                <input placeholder="Enter a name" value={this.state.name} onChange={this.onNameChanged} />
+                <button onClick={this.joinGameAsync}>Join</button>
+            </div>);
+
+        if (this.state.waitForJoin || this.state.joined) {
+            join = <p>Loading</p>;
+        }
+
         return (
             <div className="App">
                 <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
@@ -82,12 +117,7 @@ export class App extends React.Component<AppProps, GameState> {
                     <div className="game-logo">
                         <img src="./images/logo.png"></img>
                     </div>
-
-                    <div className="join-panel-input">                        
-                        <img className="bg-image" src="./images/frame-tiny.png"></img>
-                        <input placeholder="Enter a name" value={this.state.name} onChange={this.onNameChanged} />
-                        <button onClick={this.joinGameAsync}>Join</button>
-                    </div>
+                    {join}
                 </div>
             </div>
         )
@@ -129,32 +159,15 @@ export class App extends React.Component<AppProps, GameState> {
     }
 
     componentDidMount() {
+        
+        if (this.chatSubscription) this.chatSubscription.unsubscribe();
+        this.chatSubscription = this.service.chatMessageEvent.subscribe(x => this.addChatMessage(x));   
+
+        this.service.loadingEvent.subscribe(x => this.forceUpdate());
         this.service.start((auth: any) => {
 
-            this.service.getStateAsync().then(result => {
-                if (result == null) {
-                    // not necessarily an error and don't want to throw an exception when awaited, so we return null instead
-                    return;
-                }
-
-                // result: {  "hasJoined": false|true, "state": 0|1|2  }
-
-                this.setState(() => {
-                    return { joined: result.hasJoined, state: result.state };
-                })
-                console.log(JSON.stringify(result));
-
-                // the result of this should be whether game is: joinable | in progress | not started
-                // also: am I in game? true | false
-
-                // if joinable, show join button (anonymous | keep-track), keep-track can refresh website without leaving game. 
-                //      anonymous will open slot for 1 day+1 night when leaving game. then character has commited suicide. Character can also be killed
-                //      during that period of time. It is possible for anon to rejoin.
-                // if in progress or not started, queue for next game (only shared id)
-                // if in progress, leaving game is possible. But if player leaves on their own. Character commits suicide.
-
-            });
-
+            this.updateGameState();
+     
             // this.service.leaveAsync()
             // this.service.joinAsync()            
             // this.service.voteAsync(player)
@@ -168,13 +181,15 @@ export class App extends React.Component<AppProps, GameState> {
             (visibility: boolean) => this.visibilityChanged(visibility),
             (context: any, delta: any) => this.contextUpdate(context, delta));
     }
-
+    
     componentWillUnmount() {
+        if (this.stateTimer) window.clearTimeout(this.stateTimer);
+        if (this.chatTimer) window.clearTimeout(this.chatTimer);
         this.service.dispose();
     }
 
     onNameChanged(e: React.ChangeEvent<HTMLInputElement>) {
-        const name = e.currentTarget.value;
+        const name = e.currentTarget.value || "";
         this.setState(() => {
             return { name };
         });
@@ -183,14 +198,127 @@ export class App extends React.Component<AppProps, GameState> {
     async joinGameAsync() {
         if (!this.state.name || this.state.name == null || this.state.name.trim().length == 0) {
             return;
-        }
+        }        
 
-        console.log(`${this.state.name}, want to join the game, huh?`);
-        await this.service.joinAsync(this.state.name);
+        this.setState(()=>{ return { waitForJoin: true }; });
+
+        const result = await this.service.joinAsync(this.state.name);
+
+        const joined = !!result.name;
+        const name = result.name || "";
+        const role = result.role;
+
+        if (joined) {
+            this.rescheduleGetChatMessages();            
+        }
+        
+        this.setState(()=>{ return { waitForJoin: false, joined, name, role }; });
+
+        console.log(result);
     }
 
     async leaveGameAsync() {
-        console.log("NOOOOO!!! Please don't leave :(");
-        await this.service.leaveAsync(); // BLA BLU :(
+        
+        this.setState(() => { return { waitForLeave: true }; })
+
+        if (this.chatTimer) window.clearTimeout(this.chatTimer);
+
+        const result = await this.service.leaveAsync(); // BLA BLU :(
+        
+        this.setState(() => { return { waitForLeave: false, joined: false }; })
+        
+        console.log(result);
+    }
+
+    private getChatChannel(): string {
+        if (this.state.game == null) {
+            return null;
+        }
+
+        return this.state.game.phase == "Day"
+            ? this.getDayChatChannel() : this.getNightChatChannel();
+    }
+    
+    private getDayChatChannel(): string {        
+        return !this.state.lynched ? "everyone" : "";
+    }
+
+    private getNightChatChannel(): string {
+        const isMafia = this.service.isMafia(this.state.role);
+        return (this.state.lynched || this.service.isMedium(this.state.role)) 
+            ? "graveyard" : isMafia 
+            ? "mafia" : "";;
+    }
+
+    private updateGameState(): void {
+        this.service.getStateAsync().then(result => {
+            try {
+                
+                let hasJoined = false;
+                let lynched = false;
+                let state = GameStateType.INVALID;
+                let game: GameInfo = null;
+                if (result != null) {
+                    hasJoined = result.hasJoined;
+                    lynched = result.lynched;
+                    state = result.state;                 
+                    game = result.game;
+                } 
+
+                this.setState(() => {
+                    return { joined: hasJoined, state: state, game: game, lynched };
+                })
+            } finally {
+                this.rescheduleGetState();
+            }
+
+            // the result of this should be whether game is: joinable | in progress | not started
+            // also: am I in game? true | false
+
+            // if joinable, show join button (anonymous | keep-track), keep-track can refresh website without leaving game. 
+            //      anonymous will open slot for 1 day+1 night when leaving game. then character has commited suicide. Character can also be killed
+            //      during that period of time. It is possible for anon to rejoin.
+            // if in progress or not started, queue for next game (only shared id)
+            // if in progress, leaving game is possible. But if player leaves on their own. Character commits suicide.
+        });
+    }
+
+    addChatMessage(msg: ChatMessage): void {
+        const existing = this.state.chatMessages.find(x => 
+            x.timeSent == msg.timeSent && 
+            x.sender == msg.sender &&
+            x.channel == msg.channel &&
+            x.message == msg.message);
+
+        if (existing) {
+            console.warn("Trying to add a duplicated chat message");
+            return;
+        }
+
+        this.state.chatMessages.push(msg);
+        this.setState({
+            chatMessages: this.state.chatMessages
+        });
+    }
+
+    private getChatMessages(): void {
+        this.service.getChatMessagesAsync(this.getChatChannel()).then(result => {
+            this.rescheduleGetChatMessages();
+        })
+    }
+    
+    private rescheduleGetChatMessages(): void {
+        if (this.chatTimer) window.clearTimeout(this.chatTimer);
+        this.chatTimer = window.setTimeout(() => {
+            this.getChatMessages();
+        }, 50);
+    }
+
+    
+    private rescheduleGetState(): void {
+        if (this.stateTimer) window.clearTimeout(this.stateTimer);
+        this.stateTimer = window.setTimeout(() => {
+            this.updateGameState();            
+        }, 50);
     }
 }

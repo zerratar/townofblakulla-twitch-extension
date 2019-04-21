@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using TownOfBlakulla.Core;
 using TownOfBlakulla.Core.Models;
@@ -9,22 +11,36 @@ namespace TownOfBlakulla.EBS.Controllers
     [ApiController]
     public class BlakullaController : ControllerBase
     {
-        private readonly ITwitchAuth auth;
         private readonly IGame game;
+        private readonly ITwitchAuth auth;
+        private readonly IChatHandler chatHandler;
 
-        public BlakullaController(ITwitchAuth auth, IGame game)
+        public BlakullaController(
+            IGame game,
+            ITwitchAuth auth,
+            IChatHandler chatHandler)
         {
             this.auth = auth;
             this.game = game;
+            this.chatHandler = chatHandler;
         }
 
-        [HttpGet("state")]
-        public GameStateResponse GetGameState()
+        [HttpGet("state/{revision}")]
+        public Task<GameStateResponse> GetGameState(int revision)
         {
             if (!TryGetViewer(out var user))
                 return null;
 
-            return this.game.GetState(user);
+            return this.game.GetStateAsync(user, revision);
+        }
+
+        [HttpGet("chat/{channel}/{since}")]
+        public Task<IReadOnlyList<ChatMessage>> GetChatMessages(string channel, DateTime since)
+        {
+            if (!TryGetViewer(out var user))
+                return null;
+
+            return this.chatHandler.GetChatMessagesAsync(user, channel, since.ToUniversalTime());
         }
 
         [HttpPost("leave")]
@@ -37,21 +53,30 @@ namespace TownOfBlakulla.EBS.Controllers
         }
 
         [HttpPost("join")]
-        public Task<JoinResponse> JoinGame(string name)
+        public Task<JoinResponse> JoinGame(JoinGameRequest request)
         {
             if (!TryGetViewer(out var user))
                 return null;
 
-            return this.game.JoinAsync(user, name);
+            return this.game.JoinAsync(user, request.Name);
         }
 
         [HttpPost("vote")]
-        public Task<VoteResponse> Vote(string value)
+        public Task<VoteResponse> Vote(VoteRequest request)
         {
             if (!TryGetViewer(out var user))
                 return null;
 
-            return this.game.VoteAsync(user, value);
+            return this.game.VoteAsync(user, request.Value);
+        }
+
+        [HttpPost("chat")]
+        public Task<ChatMessage> Chat(ChatRequest request)
+        {
+            if (!TryGetViewer(out var user))
+                return null;
+
+            return this.game.SendChatMessageAsync(user, request.Channel, request.Message);
         }
 
         private bool TryGetViewer(out TwitchViewer user)

@@ -12,6 +12,7 @@ namespace TownOfBlakulla.Core
     {
         private readonly ILogger logger;
         private readonly IPlayerHandler playerHandler;
+        private readonly IChatHandler chatHandler;
         private readonly IActionQueue actionQueue;
         private readonly GameContext context;
         private readonly object mutex = new object();
@@ -19,31 +20,35 @@ namespace TownOfBlakulla.Core
         private readonly ConcurrentDictionary<Guid, TaskCompletionSource<GameActionReply>> messageLookup
             = new ConcurrentDictionary<Guid, TaskCompletionSource<GameActionReply>>();
 
+        private GameState lastState = GameState.NotStarted;
+
         public Game(
             ILogger logger,
             IPlayerHandler playerHandler,
+            IChatHandler chatHandler,
             IActionQueue actionQueue)
         {
             this.logger = logger;
             this.playerHandler = playerHandler;
+            this.chatHandler = chatHandler;
             this.actionQueue = actionQueue;
             this.context = new GameContext();
+        }
+
+        public void PushMessages(MessageRequest request)
+        {
+            if (request.Messages != null && request.Messages.Count > 0)
+            {
+                this.HandleMessages(request.Messages);
+            }
         }
 
         public void Update(UpdateGameStateRequest request)
         {
             lock (mutex)
             {
-                context.SubPhaseIndex = request.SubPhaseIndex;
-                context.PhaseIndex = request.PhaseIndex;
-                context.PlayerCount = request.PlayerCount;
-                context.StartTime = request.StartTime;
-                context.State = request.State;
-
-                if (request.Messages != null && request.Messages.Count > 0)
-                {
-                    this.HandleMessages(request.Messages);
-                }
+                context.GameState = request.GameState;
+                this.playerHandler.SetActivePlayers(context.GameState.Players);
             }
         }
 
@@ -51,25 +56,84 @@ namespace TownOfBlakulla.Core
         {
             lock (mutex)
             {
+                var state =
+                    context.GameState == null
+                        ? GameState.NotStarted
+                        : context.GameState.Joinable
+                            ? GameState.Joinable
+                            : context.GameState.Started
+                                ? GameState.Started
+                                : GameState.NotStarted;
+
+                if (state != this.lastState && state == GameState.NotStarted)
+                {
+                    ResetGame();
+                }
+
+                var lynched = false;
+
+                var player = this.playerHandler.Get(viewerContext);
+                if (player != null)
+                {
+                    lynched = player.Lynched;
+                }
+
+                this.lastState = state;
+                var isPlaying = playerHandler.IsPlaying(viewerContext);
                 return new GameStateResponse(
-                    context.State,
-                    playerHandler.IsPlaying(viewerContext));
+                    state,
+                    isPlaying,
+                    lynched,
+                    isPlaying ? GameInfo.FromUpdateInfo(context.GameState) : null,
+                    context.Revision);
             }
         }
 
-        public Task<LeaveResponse> LeaveAsync(TwitchViewer viewerContext)
+        public async Task<GameStateResponse> GetStateAsync(TwitchViewer viewerContext, int revision)
         {
-            return AwaitResponse<LeaveResponse>("leave");
+            var timeout = 0;
+            var state = this.GetState(viewerContext);
+            while (state.Revision == revision)
+            {
+                await Task.Delay(50);
+                timeout += 50;
+                state = this.GetState(viewerContext);
+                if (timeout >= 20_000) break;
+            }
+
+
+            return state;
         }
 
-        public Task<JoinResponse> JoinAsync(TwitchViewer viewerContext, string name)
+        public async Task<LeaveResponse> LeaveAsync(TwitchViewer viewerContext)
         {
-            return AwaitResponse<JoinResponse>("join", name);
+            var result = await AwaitResponse<LeaveResponse>("leave", viewerContext.Identifier);
+            if (result != null)
+            {
+                playerHandler.Remove(viewerContext);
+            }
+
+            return result;
+        }
+
+        public async Task<JoinResponse> JoinAsync(TwitchViewer viewerContext, string name)
+        {
+            var result = await AwaitResponse<JoinResponse>("join", viewerContext.Identifier, name);
+            if (result != null && !string.IsNullOrEmpty(result.Role))
+            {
+                playerHandler.Add(viewerContext, name);
+            }
+            return result;
         }
 
         public Task<VoteResponse> VoteAsync(TwitchViewer viewerContext, string value)
         {
-            return AwaitResponse<VoteResponse>("vote");
+            return AwaitResponse<VoteResponse>("vote", viewerContext.Identifier, value);
+        }
+
+        public Task<ChatMessage> SendChatMessageAsync(TwitchViewer viewerContext, string channel, string message)
+        {
+            return AwaitChatResponse(viewerContext.Identifier, channel, message);
         }
 
         private void HandleMessages(IReadOnlyList<GameActionReply> requestMessages)
@@ -93,12 +157,28 @@ namespace TownOfBlakulla.Core
             messageLookup.Remove(message.CorrelationId, out _);
         }
 
-        private async Task<T> AwaitResponse<T>(string name, string arguments = null)
+        private void ResetGame()
+        {
+            lock (mutex)
+            {
+                playerHandler.Reset();
+
+            }
+        }
+
+        private async Task<ChatMessage> AwaitChatResponse(params string[] arguments)
+        {
+            var chatResponse = await AwaitResponse<ChatResponse>("chat", arguments);
+
+            return chatHandler.HandleChatResponse(chatResponse);
+        }
+
+        private async Task<T> AwaitResponse<T>(string name, params string[] arguments)
         {
             return await AwaitResponse<T>(Guid.NewGuid(), name, arguments);
         }
 
-        private async Task<T> AwaitResponse<T>(Guid id, string name, string arguments)
+        private async Task<T> AwaitResponse<T>(Guid id, string name, params string[] arguments)
         {
             var taskSource = new TaskCompletionSource<GameActionReply>();
 
