@@ -6145,6 +6145,48 @@ class BlakullaService {
             return null;
         });
     }
+    updateLastWillAsync(lastWill) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                this.beginLoading();
+                const result = yield this.auth.apiPost("last-will", { lastWill });
+                if (result && result.ok) {
+                    return yield result.json();
+                }
+                else {
+                    console.error("updateLastWillAsync failed, uknown reason.");
+                }
+            }
+            catch (err) {
+                console.error(err);
+            }
+            finally {
+                this.endLoading();
+            }
+            return null;
+        });
+    }
+    updateDeathNoteAsync(deathNote) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                this.beginLoading();
+                const result = yield this.auth.apiPost("death-note", { deathNote });
+                if (result && result.ok) {
+                    return yield result.json();
+                }
+                else {
+                    console.error("updateDeathNoteAsync failed, uknown reason.");
+                }
+            }
+            catch (err) {
+                console.error(err);
+            }
+            finally {
+                this.endLoading();
+            }
+            return null;
+        });
+    }
     start(onAuth, onVisibilityChanged, onContextUpdate) {
         this.twitch.onAuthorized((auth) => __awaiter(this, void 0, void 0, function* () {
             this.auth.setToken(auth.token, auth.userId);
@@ -6312,6 +6354,7 @@ const toggle_overlay_button_1 = __webpack_require__(/*! ./toggle-overlay-button 
 __webpack_require__(/*! ./app.scss */ "./src/components/app.scss");
 const day_1 = __webpack_require__(/*! ./phases/day */ "./src/components/phases/day.tsx");
 const night_1 = __webpack_require__(/*! ./phases/night */ "./src/components/phases/night.tsx");
+const game_menu_1 = __webpack_require__(/*! ./game-menu */ "./src/components/game-menu.tsx");
 class App extends React.Component {
     constructor(props) {
         super(props);
@@ -6321,6 +6364,7 @@ class App extends React.Component {
         this.leaveGameAsync = this.leaveGameAsync.bind(this);
         this.joinGameAsync = this.joinGameAsync.bind(this);
         this.onNameChanged = this.onNameChanged.bind(this);
+        this.onNameKeyDown = this.onNameKeyDown.bind(this);
         this.visibilityChanged = this.visibilityChanged.bind(this);
     }
     // <div className={this.state.theme === "light" ? "App-light" : "App-dark"} >
@@ -6367,15 +6411,19 @@ class App extends React.Component {
             leave = React.createElement("p", null);
             phase = React.createElement("p", null);
         }
+        if (this.state.joined && !this.state.lynched) {
+        }
+        const isMafia = this.service.isMafia(this.state.role);
         return (React.createElement("div", { className: "App" },
             React.createElement(toggle_overlay_button_1.ToggleOverlayButton, { onVisibilityChanged: this.visibilityChanged }),
+            React.createElement(game_menu_1.default, { service: this.service, lynched: this.state.lynched, mafia: isMafia }),
             leave,
             phase));
     }
     renderJoinGame() {
         let join = (React.createElement("div", { className: "join-panel-input" },
             React.createElement("img", { className: "bg-image", src: "./images/frame-tiny.png" }),
-            React.createElement("input", { placeholder: "Enter a name", value: this.state.name, onChange: this.onNameChanged }),
+            React.createElement("input", { placeholder: "Enter a name", value: this.state.name, onChange: this.onNameChanged, onKeyDown: this.onNameKeyDown }),
             React.createElement("button", { onClick: this.joinGameAsync }, "Join")));
         if (this.state.waitForJoin || this.state.joined) {
             join = React.createElement("p", null, "Loading");
@@ -6443,6 +6491,12 @@ class App extends React.Component {
         this.setState(() => {
             return { name };
         });
+    }
+    onNameKeyDown(e) {
+        if (e.keyCode == 13) {
+            e.preventDefault();
+            this.joinGameAsync();
+        }
     }
     joinGameAsync() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -6614,6 +6668,7 @@ class Chat extends React.Component {
         this.service = props.service;
         this.onMessageChanged = this.onMessageChanged.bind(this);
         this.sendMessageAsync = this.sendMessageAsync.bind(this);
+        this.onInputKeyDown = this.onInputKeyDown.bind(this);
     }
     componentDidMount() {
     }
@@ -6636,7 +6691,7 @@ class Chat extends React.Component {
         const placeholder = `Send a message to ${this.props.channel}`;
         return (React.createElement("div", { className: "chat-panel-input" },
             React.createElement("div", { className: "input-row" },
-                React.createElement("input", { placeholder: placeholder, value: this.state.message, onChange: this.onMessageChanged }),
+                React.createElement("input", { placeholder: placeholder, value: this.state.message, onChange: this.onMessageChanged, onKeyDown: this.onInputKeyDown }),
                 React.createElement("button", { onClick: this.sendMessageAsync }, "Send")),
             React.createElement("div", { className: "chat-log" }, chatMessages)));
     }
@@ -6645,6 +6700,12 @@ class Chat extends React.Component {
         this.setState({
             message: value
         });
+    }
+    onInputKeyDown(e) {
+        if (e.keyCode == 13) { // if enter
+            e.preventDefault();
+            this.sendMessageAsync();
+        }
     }
     sendMessageAsync() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -6664,6 +6725,94 @@ class Chat extends React.Component {
     }
 }
 exports.default = Chat;
+
+
+/***/ }),
+
+/***/ "./src/components/game-menu.tsx":
+/*!**************************************!*\
+  !*** ./src/components/game-menu.tsx ***!
+  \**************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const React = __webpack_require__(/*! react */ "react");
+class GameMenu extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { lastWill: "", deathNote: "", lastWillVisible: false, deathNoteVisible: false };
+        this.service = props.service;
+        this.onLastWillChanged = this.onLastWillChanged.bind(this);
+        this.onDeathNoteChanged = this.onDeathNoteChanged.bind(this);
+        this.toggleLastWill = this.toggleLastWill.bind(this);
+        this.toggleDeathNote = this.toggleDeathNote.bind(this);
+        this.updateLastWillAsync = this.updateLastWillAsync.bind(this);
+        this.updateDeathNoteAsync = this.updateDeathNoteAsync.bind(this);
+    }
+    render() {
+        const inputPanel = this.state.lastWillVisible
+            ? this.renderLastWill()
+            : this.state.deathNoteVisible && this.props.mafia
+                ? this.renderDeathNote()
+                : null;
+        const deathNoteButton = this.props.mafia
+            ? (React.createElement("button", { onClick: this.toggleDeathNote }, "DESU NOTO?"))
+            : null;
+        return (React.createElement("div", { className: "menu" },
+            React.createElement("div", { className: "menu-items" },
+                React.createElement("button", { onClick: this.toggleLastWill }, "LAST WILLY?"),
+                deathNoteButton),
+            inputPanel));
+    }
+    renderDeathNote() {
+        return (React.createElement("div", { className: "input-panel" },
+            React.createElement("textarea", { onChange: this.onDeathNoteChanged, value: this.state.deathNote }),
+            React.createElement("button", { onClick: this.updateDeathNoteAsync }, "Save")));
+    }
+    renderLastWill() {
+        return (React.createElement("div", { className: "input-panel" },
+            React.createElement("textarea", { onChange: this.onLastWillChanged, value: this.state.lastWill }),
+            React.createElement("button", { onClick: this.updateLastWillAsync }, "Save")));
+    }
+    toggleDeathNote() {
+        this.setState({ deathNoteVisible: !this.state.deathNoteVisible, lastWillVisible: false });
+    }
+    toggleLastWill() {
+        this.setState({ lastWillVisible: !this.state.lastWillVisible, deathNoteVisible: false });
+    }
+    onLastWillChanged(event) {
+        const elm = event.currentTarget;
+        this.setState({ lastWill: elm.value });
+    }
+    onDeathNoteChanged(event) {
+        const elm = event.currentTarget;
+        this.setState({ deathNote: elm.value });
+    }
+    updateLastWillAsync() {
+        if (!this.state.lastWill)
+            return null;
+        try {
+            return this.service.updateLastWillAsync(this.state.lastWill);
+        }
+        finally {
+            this.toggleLastWill();
+        }
+    }
+    updateDeathNoteAsync() {
+        if (!this.state.deathNote)
+            return null;
+        try {
+            return this.service.updateDeathNoteAsync(this.state.deathNote);
+        }
+        finally {
+            this.toggleDeathNote();
+        }
+    }
+}
+exports.default = GameMenu;
 
 
 /***/ }),
@@ -6702,13 +6851,15 @@ class Day extends React.Component {
     }
     render() {
         let subPhaseRender = null;
-        switch (this.state.game.subPhase) {
-            case "Voting":
-                subPhaseRender = this.renderVoting();
-                break;
-            case "Judgement":
-                subPhaseRender = this.renderJudgement();
-                break;
+        if (!this.state.lynched) {
+            switch (this.state.game.subPhase) {
+                case "Voting":
+                    subPhaseRender = this.renderVoting();
+                    break;
+                case "Judgement":
+                    subPhaseRender = this.renderJudgement();
+                    break;
+            }
         }
         const channelName = this.props.channel;
         const isEnabled = !this.state.lynched;

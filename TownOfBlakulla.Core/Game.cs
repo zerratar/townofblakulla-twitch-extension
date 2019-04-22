@@ -48,7 +48,7 @@ namespace TownOfBlakulla.Core
             lock (mutex)
             {
                 context.GameState = request.GameState;
-                this.playerHandler.SetActivePlayers(context.GameState.Players);
+                playerHandler.SetActivePlayers(context.GameState?.Players);
             }
         }
 

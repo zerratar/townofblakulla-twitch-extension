@@ -27,6 +27,7 @@ export default class Chat extends React.Component<ChatProps, GameChatState> {
         this.service = props.service;
         this.onMessageChanged = this.onMessageChanged.bind(this);
         this.sendMessageAsync = this.sendMessageAsync.bind(this);
+        this.onInputKeyDown = this.onInputKeyDown.bind(this);
     }
 
     componentDidMount(): void {
@@ -58,7 +59,7 @@ export default class Chat extends React.Component<ChatProps, GameChatState> {
 
         <div className="chat-panel-input">
             <div className="input-row">
-                <input placeholder={placeholder} value={this.state.message} onChange={this.onMessageChanged} />
+                <input placeholder={placeholder} value={this.state.message} onChange={this.onMessageChanged} onKeyDown={this.onInputKeyDown} />
                 <button onClick={this.sendMessageAsync}>Send</button>
             </div>        
             <div className="chat-log">
@@ -74,8 +75,16 @@ export default class Chat extends React.Component<ChatProps, GameChatState> {
         })
     }
 
+    onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {        
+        if (e.keyCode == 13) { // if enter
+            e.preventDefault();
+            this.sendMessageAsync();
+        }
+    }
+
     async sendMessageAsync() {
-        const msg = this.state.message;        
+        const msg = this.state.message;      
+
         const channel = this.props.channel;
         if (!msg || msg == null || msg.length == 0 || msg.trim() == "") {
             return;

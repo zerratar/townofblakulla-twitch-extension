@@ -32,6 +32,13 @@ namespace TownOfBlakulla.Core.Handlers
         {
             lock (mutex)
             {
+
+                if (gameStatePlayers == null || gameStatePlayers.Count == 0)
+                {
+                    this.Reset();
+                    return;
+                }
+
                 foreach (var viewer in this.viewers)
                 {
                     if (viewerPlayerNameLookup.TryGetValue(viewer.Identifier, out var playerName))

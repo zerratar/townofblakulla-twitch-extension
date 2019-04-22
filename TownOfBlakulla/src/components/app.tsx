@@ -24,6 +24,7 @@ export class App extends React.Component<AppProps, GameState> {
         this.leaveGameAsync = this.leaveGameAsync.bind(this);
         this.joinGameAsync = this.joinGameAsync.bind(this);
         this.onNameChanged = this.onNameChanged.bind(this);
+        this.onNameKeyDown = this.onNameKeyDown.bind(this);
         this.visibilityChanged = this.visibilityChanged.bind(this);
     }
 
@@ -108,7 +109,7 @@ export class App extends React.Component<AppProps, GameState> {
         let join = 
             (<div className="join-panel-input">
                 <img className="bg-image" src="./images/frame-tiny.png"></img>
-                <input placeholder="Enter a name" value={this.state.name} onChange={this.onNameChanged} />
+                <input placeholder="Enter a name" value={this.state.name} onChange={this.onNameChanged} onKeyDown={this.onNameKeyDown} />
                 <button onClick={this.joinGameAsync}>Join</button>
             </div>);
 
@@ -199,6 +200,13 @@ export class App extends React.Component<AppProps, GameState> {
         this.setState(() => {
             return { name };
         });
+    }
+
+    onNameKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.keyCode == 13) {
+            e.preventDefault();
+            this.joinGameAsync();
+        }
     }
 
     async joinGameAsync() {
