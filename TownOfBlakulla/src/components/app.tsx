@@ -7,6 +7,7 @@ import { ToggleOverlayButton } from "./toggle-overlay-button";
 import "./app.scss";
 import Day from "./phases/day";
 import Night from "./phases/night";
+import GameMenu from "./game-menu";
 
 export interface AppProps { }
 
@@ -89,9 +90,14 @@ export class App extends React.Component<AppProps, GameState> {
             leave = <p></p>;
             phase = <p></p>;
         }      
+        
+        if (this.state.joined && !this.state.lynched) {
 
+        }
+        const isMafia = this.service.isMafia(this.state.role);
         return (<div className="App">
                     <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+                    <GameMenu service={this.service} lynched={this.state.lynched} mafia={isMafia} />
                     {leave}
                     {phase}                
                 </div>);

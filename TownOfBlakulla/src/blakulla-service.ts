@@ -149,6 +149,40 @@ export default class BlakullaService {
         return null;
     }
 
+    async updateLastWillAsync(lastWill: string) {
+        try {
+            this.beginLoading();
+            const result = await this.auth.apiPost("last-will", {lastWill});
+            if (result && result.ok) {
+                return await result.json();
+            } else {
+                console.error("updateLastWillAsync failed, uknown reason.");
+            }
+        } catch (err) {
+            console.error(err);
+        }  finally { 
+            this.endLoading();
+        }
+        return null;
+    }
+
+    async updateDeathNoteAsync(deathNote: string) {
+        try {
+            this.beginLoading();
+            const result = await this.auth.apiPost("death-note", {deathNote});
+            if (result && result.ok) {
+                return await result.json();
+            } else {
+                console.error("updateDeathNoteAsync failed, uknown reason.");
+            }
+        } catch (err) {
+            console.error(err);
+        }  finally { 
+            this.endLoading();
+        }
+        return null;
+    }
+
     start(
         onAuth: (res: any) => void,
         onVisibilityChanged: (visibility: boolean) => void,

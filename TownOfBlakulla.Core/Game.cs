@@ -136,6 +136,16 @@ namespace TownOfBlakulla.Core
             return AwaitChatResponse(viewerContext.Identifier, channel, message);
         }
 
+        public Task<LastWillResponse> UpdateLastWill(TwitchViewer viewerContext, string lastWill)
+        {
+            return AwaitResponse<LastWillResponse>("last-will", viewerContext.Identifier, lastWill);
+        }
+
+        public Task<DeathNoteResponse> UpdateDeathNote(TwitchViewer viewerContext, string deathNote)
+        {
+            return AwaitResponse<DeathNoteResponse>("death-note", viewerContext.Identifier, deathNote);
+        }
+
         private void HandleMessages(IReadOnlyList<GameActionReply> requestMessages)
         {
             foreach (var msg in requestMessages)

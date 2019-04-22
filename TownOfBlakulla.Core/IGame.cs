@@ -22,5 +22,9 @@ namespace TownOfBlakulla.Core
         Task<VoteResponse> VoteAsync(TwitchViewer viewerContext, string value);
 
         Task<ChatMessage> SendChatMessageAsync(TwitchViewer viewerContext, string channel, string message);
+
+        Task<LastWillResponse> UpdateLastWill(TwitchViewer viewerContext, string lastWill);
+
+        Task<DeathNoteResponse> UpdateDeathNote(TwitchViewer viewerContext, string deathNote);
     }
 }

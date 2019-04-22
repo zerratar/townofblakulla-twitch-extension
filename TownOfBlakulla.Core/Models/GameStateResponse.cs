@@ -59,7 +59,7 @@ namespace TownOfBlakulla.Core.Models
 
         public Player[] Players { get; set; }
 
-        public DateTime SubPhaseStart { get; set; }
+        public float SubPhaseStart { get; set; }
 
         public string SubPhase { get; set; }
 

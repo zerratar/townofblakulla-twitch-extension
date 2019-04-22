@@ -38,9 +38,9 @@ namespace TownOfBlakulla.EBS.Controllers
 
             while (!actionQueue.TryDequeue(out item))
             {
-                await Task.Delay(200);
-                timeout += 200;
-                if (timeout >= 20_000) return GameAction.None;
+                await Task.Delay(10);
+                timeout += 10;
+                if (timeout >= 10000) return GameAction.None;
             }
 
             return item;

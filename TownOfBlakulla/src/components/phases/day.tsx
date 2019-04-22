@@ -23,15 +23,16 @@ export default class Day extends React.Component<PhaseProps, GameState> {
     render() {
 
         let subPhaseRender = null;
-        switch (this.state.game.subPhase) {
-            case "Voting":
-                subPhaseRender = this.renderVoting();
-                break;
-            case "Judgement":
-                subPhaseRender = this.renderJudgement();
-                break;
+        if (!this.state.lynched) {
+            switch (this.state.game.subPhase) {
+                case "Voting":
+                    subPhaseRender = this.renderVoting();
+                    break;
+                case "Judgement":
+                    subPhaseRender = this.renderJudgement();
+                    break;
+            }
         }
-
         const channelName = this.props.channel;
         const isEnabled = !this.state.lynched;
         return (

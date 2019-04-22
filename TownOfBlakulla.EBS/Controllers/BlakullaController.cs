@@ -52,6 +52,24 @@ namespace TownOfBlakulla.EBS.Controllers
             return this.game.LeaveAsync(user);
         }
 
+        [HttpPost("last-will")]
+        public Task<LastWillResponse> UpdateLastWill(LastWillRequest request)
+        {
+            if (!TryGetViewer(out var user))
+                return null;
+
+            return this.game.UpdateLastWill(user, request.LastWill);
+        }
+
+        [HttpPost("death-note")]
+        public Task<DeathNoteResponse> UpdateDeathNote(DeathNoteRequest request)
+        {
+            if (!TryGetViewer(out var user))
+                return null;
+
+            return this.game.UpdateDeathNote(user, request.DeathNote);
+        }
+
         [HttpPost("join")]
         public Task<JoinResponse> JoinGame(JoinGameRequest request)
         {
