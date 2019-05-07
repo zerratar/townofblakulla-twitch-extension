@@ -52,6 +52,15 @@ namespace TownOfBlakulla.EBS.Controllers
             return this.game.LeaveAsync(user);
         }
 
+        [HttpPost("use-ability")]
+        public Task<UseAbilityResponse> UseAbility(UseAbilityRequest request)
+        {
+            if (!TryGetViewer(out var user))
+                return null;
+
+            return this.game.UseAbility(user, request.Arguments);
+        }
+
         [HttpPost("last-will")]
         public Task<LastWillResponse> UpdateLastWill(LastWillRequest request)
         {

@@ -11,7 +11,7 @@
     "twitch",
     "extension"
   ],
-  "author": "Emily Rose <amorelandra@twitch.tv>",
+  "author": "Zerratar <zerratar@gmail.com>",
   "license": "Apache-2.0",
   "dependencies": {
     "@types/react": "^16.8.10",

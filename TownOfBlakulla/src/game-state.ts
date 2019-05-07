@@ -24,6 +24,8 @@ export default class GameState {
     public state: number = -1;
     public lynched: boolean = false;
 
+    public isGameReady: boolean = false;
+
     public isVisible: boolean = false;    
     public waitForJoin: boolean = false;
     public waitForLeave: boolean = false;

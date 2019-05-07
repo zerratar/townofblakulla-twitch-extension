@@ -1,22 +1,38 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using TownOfBlakulla.Core.Models;
 
 namespace TownOfBlakulla.Core.Handlers
 {
     public class PlayerHandler : IPlayerHandler
     {
+        private readonly IPropertyRepository propertyRepository;
+
         private readonly object mutex = new object();
 
-        private readonly List<TwitchViewer> viewers = new List<TwitchViewer>();
+        private readonly List<TwitchViewer> viewers;
 
-        private readonly ConcurrentDictionary<string, PlayerInfo> viewerPlayerLookup
-            = new ConcurrentDictionary<string, PlayerInfo>();
+        private readonly ConcurrentDictionary<string, PlayerInfo> viewerPlayerLookup;
 
-        private readonly ConcurrentDictionary<string, string> viewerPlayerNameLookup
-            = new ConcurrentDictionary<string, string>();
+        private readonly ConcurrentDictionary<string, string> viewerPlayerNameLookup;
+
+        public PlayerHandler(IPropertyRepository propertyRepository)
+        {
+            this.propertyRepository = propertyRepository;
+
+            this.viewers =
+                this.propertyRepository.Load<List<TwitchViewer>>(nameof(viewers))
+                ?? new List<TwitchViewer>();
+
+            this.viewerPlayerLookup =
+                this.propertyRepository.Load<ConcurrentDictionary<string, PlayerInfo>>(nameof(viewerPlayerLookup))
+                ?? new ConcurrentDictionary<string, PlayerInfo>();
+
+            this.viewerPlayerNameLookup =
+                this.propertyRepository.Load<ConcurrentDictionary<string, string>>(nameof(viewerPlayerNameLookup))
+                ?? new ConcurrentDictionary<string, string>();
+        }
 
         public void Reset()
         {
@@ -25,6 +41,7 @@ namespace TownOfBlakulla.Core.Handlers
                 viewers.Clear();
                 viewerPlayerNameLookup.Clear();
                 viewerPlayerLookup.Clear();
+                SaveProperties();
             }
         }
 
@@ -39,14 +56,20 @@ namespace TownOfBlakulla.Core.Handlers
                     return;
                 }
 
+                var changed = false;
                 foreach (var viewer in this.viewers)
                 {
                     if (viewerPlayerNameLookup.TryGetValue(viewer.Identifier, out var playerName))
                     {
                         viewerPlayerLookup[viewer.Identifier] =
                             gameStatePlayers.FirstOrDefault(x => x.Name == playerName);
+                        changed = true;
                     }
+                }
 
+                if (changed)
+                {
+                    SaveProperties();
                 }
             }
         }
@@ -65,6 +88,7 @@ namespace TownOfBlakulla.Core.Handlers
             {
                 viewers.Add(viewer);
                 viewerPlayerNameLookup[viewer.Identifier] = playerName;
+                SaveProperties();
             }
         }
 
@@ -77,6 +101,7 @@ namespace TownOfBlakulla.Core.Handlers
                 {
                     viewers.Remove(toRemove);
                     viewerPlayerNameLookup.Remove(viewer.Identifier, out _);
+                    SaveProperties();
                 }
             }
         }
@@ -97,6 +122,13 @@ namespace TownOfBlakulla.Core.Handlers
             }
 
             return null;
+        }
+
+        private void SaveProperties()
+        {
+            this.propertyRepository.Save(nameof(viewers), viewers);
+            this.propertyRepository.Save(nameof(viewerPlayerLookup), viewerPlayerLookup);
+            this.propertyRepository.Save(nameof(viewerPlayerNameLookup), viewerPlayerNameLookup);
         }
     }
 }

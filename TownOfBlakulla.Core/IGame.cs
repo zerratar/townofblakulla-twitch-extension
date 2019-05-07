@@ -26,5 +26,7 @@ namespace TownOfBlakulla.Core
         Task<LastWillResponse> UpdateLastWill(TwitchViewer viewerContext, string lastWill);
 
         Task<DeathNoteResponse> UpdateDeathNote(TwitchViewer viewerContext, string deathNote);
+
+        Task<UseAbilityResponse> UseAbility(TwitchViewer viewerContext, string arguments);
     }
 }

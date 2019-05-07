@@ -98,6 +98,23 @@ export default class BlakullaService {
         return null;   
     }
 
+    async useAbilityAsync(args: string) {
+        try {            
+            this.beginLoading();
+            const result = await this.auth.apiPost("join", {arguments: args});
+            if (result && result.ok) {
+                return await result.json();
+            } else {
+                console.error("useAbilityAsync failed, uknown reason.");
+            }
+        } catch (err) {
+            console.error(err);
+        } finally { 
+            this.endLoading();
+        }
+        return null;
+    }
+
     async joinAsync(name: string) {
         try {            
             this.beginLoading();

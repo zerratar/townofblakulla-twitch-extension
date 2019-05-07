@@ -9,18 +9,21 @@ namespace TownOfBlakulla.Core.Models
             GameState state,
             bool hasJoined,
             bool lynched,
+            string[] abilityArgs,
             GameInfo game,
             int revision)
         {
             State = state;
             HasJoined = hasJoined;
             Lynched = lynched;
+            AbilityArgs = abilityArgs;
             Game = game;
             Revision = revision;
         }
 
         public bool HasJoined { get; }
         public bool Lynched { get; }
+        public string[] AbilityArgs { get; }
         public GameInfo Game { get; }
         public GameState State { get; }
         public int Revision { get; }
@@ -44,14 +47,18 @@ namespace TownOfBlakulla.Core.Models
 
     public class GameInfo
     {
-        public static GameInfo FromUpdateInfo(GameUpdateInfo source)
+        public static GameInfo FromUpdateInfo(GameUpdateInfo source, bool isPlaying)
         {
             var result = new GameInfo();
-            result.Players = source.Players.Select(GameInfo.Player.Map).ToArray();
+            if (isPlaying)
+            {
+                result.Players = source.Players.Select(GameInfo.Player.Map).ToArray();
+                result.SubPhaseStart = source.SubPhase.EnterTime;
+                result.SubPhaseDuration = source.SubPhase.Duration;
+            }
+
             result.Phase = source.PhaseName;
             result.SubPhase = source.SubPhase.Name;
-            result.SubPhaseStart = source.SubPhase.EnterTime;
-            result.SubPhaseDuration = source.SubPhase.Duration;
             return result;
         }
 

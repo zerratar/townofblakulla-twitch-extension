@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -40,6 +41,7 @@ namespace TownOfBlakulla.EBS
                 options.AddPolicy("AllowAllHeaders", builder => builder.AllowAnyHeader());
             });
 
+            services.AddSingleton<IPropertyRepository, JsonFileBasedPropertyRepository>();
             services.AddSingleton<ILogger, ConsoleLogger>();
             services.AddSingleton<ITwitchAuth, TwitchAuth>();
             services.AddSingleton<IActionQueue, ActionQueue>();
@@ -50,6 +52,18 @@ namespace TownOfBlakulla.EBS
             var configurationSection = Configuration.GetSection("AppSettings");
             services.Configure<AppSettings>(configurationSection);
 
+
+            services.AddDistributedMemoryCache();
+
+            services.AddSession(options =>
+            {
+                // Set a short timeout for easy testing.
+                options.IdleTimeout = TimeSpan.FromHours(2);
+                options.Cookie.HttpOnly = true;
+                // Make the session cookie essential
+                options.Cookie.IsEssential = true;
+            });
+            
             services
                 .AddAuthentication()
                 .AddTwitchExtensionAuth();
@@ -84,6 +98,7 @@ namespace TownOfBlakulla.EBS
                     .AllowAnyMethod()
                     .AllowAnyOrigin());
 
+            app.UseSession();
             app.UseDefaultFiles();
             app.UseMvc();
 

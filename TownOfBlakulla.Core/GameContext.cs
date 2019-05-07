@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Threading;
 using TownOfBlakulla.Core.Models;
 
 namespace TownOfBlakulla.Core
@@ -9,7 +7,16 @@ namespace TownOfBlakulla.Core
     {
         private int revision;
         private GameUpdateInfo gameState;
-        private DateTime lastMessagesReceived;
+
+        private GameContext()
+        {
+        }
+
+        public GameContext(GameUpdateInfo gameState, int revision)
+        {
+            this.gameState = gameState;
+            this.revision = revision;
+        }
 
         public GameUpdateInfo GameState
         {
@@ -88,5 +95,9 @@ namespace TownOfBlakulla.Core
             return false;
         }
 
+        public static GameContext CreateEmpty()
+        {
+            return new GameContext();
+        }
     }
 }

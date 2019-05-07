@@ -14,11 +14,12 @@ namespace TownOfBlakulla.Core
         private readonly IPlayerHandler playerHandler;
         private readonly IChatHandler chatHandler;
         private readonly IActionQueue actionQueue;
+        private readonly IPropertyRepository propertyRepository;
+
         private readonly GameContext context;
         private readonly object mutex = new object();
 
-        private readonly ConcurrentDictionary<Guid, TaskCompletionSource<GameActionReply>> messageLookup
-            = new ConcurrentDictionary<Guid, TaskCompletionSource<GameActionReply>>();
+        private readonly ConcurrentDictionary<Guid, TaskCompletionSource<GameActionReply>> messageLookup;
 
         private GameState lastState = GameState.NotStarted;
 
@@ -26,13 +27,19 @@ namespace TownOfBlakulla.Core
             ILogger logger,
             IPlayerHandler playerHandler,
             IChatHandler chatHandler,
-            IActionQueue actionQueue)
+            IActionQueue actionQueue,
+            IPropertyRepository propertyRepository)
         {
             this.logger = logger;
             this.playerHandler = playerHandler;
             this.chatHandler = chatHandler;
             this.actionQueue = actionQueue;
-            this.context = new GameContext();
+            this.propertyRepository = propertyRepository;
+
+            this.messageLookup = propertyRepository.Load<ConcurrentDictionary<Guid, TaskCompletionSource<GameActionReply>>>(nameof(messageLookup))
+                                 ?? new ConcurrentDictionary<Guid, TaskCompletionSource<GameActionReply>>();
+
+            this.context = propertyRepository.Load<GameContext>(nameof(context)) ?? GameContext.CreateEmpty();
         }
 
         public void PushMessages(MessageRequest request)
@@ -48,6 +55,9 @@ namespace TownOfBlakulla.Core
             lock (mutex)
             {
                 context.GameState = request.GameState;
+
+                propertyRepository.Save(nameof(context), context);
+
                 playerHandler.SetActivePlayers(context.GameState?.Players);
             }
         }
@@ -71,20 +81,22 @@ namespace TownOfBlakulla.Core
                 }
 
                 var lynched = false;
-
+                var abilityArguments = new string[0];
                 var player = this.playerHandler.Get(viewerContext);
                 if (player != null)
                 {
                     lynched = player.Lynched;
+                    abilityArguments = player.Role.GetUsableArguments(player, this.context);
                 }
 
-                this.lastState = state;
                 var isPlaying = playerHandler.IsPlaying(viewerContext);
+                this.lastState = state;
                 return new GameStateResponse(
                     state,
                     isPlaying,
                     lynched,
-                    isPlaying ? GameInfo.FromUpdateInfo(context.GameState) : null,
+                    abilityArguments,
+                    GameInfo.FromUpdateInfo(context.GameState, isPlaying),
                     context.Revision);
             }
         }
@@ -121,6 +133,7 @@ namespace TownOfBlakulla.Core
             var result = await AwaitResponse<JoinResponse>("join", viewerContext.Identifier, name);
             if (result != null && !string.IsNullOrEmpty(result.Role))
             {
+                result.Game = GameInfo.FromUpdateInfo(context.GameState, true);
                 playerHandler.Add(viewerContext, name);
             }
             return result;
@@ -144,6 +157,11 @@ namespace TownOfBlakulla.Core
         public Task<DeathNoteResponse> UpdateDeathNote(TwitchViewer viewerContext, string deathNote)
         {
             return AwaitResponse<DeathNoteResponse>("death-note", viewerContext.Identifier, deathNote);
+        }
+
+        public Task<UseAbilityResponse> UseAbility(TwitchViewer viewerContext, string arguments)
+        {
+            return AwaitResponse<UseAbilityResponse>("use-ability", viewerContext.Identifier, arguments);
         }
 
         private void HandleMessages(IReadOnlyList<GameActionReply> requestMessages)

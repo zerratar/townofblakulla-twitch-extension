@@ -1,12 +1,22 @@
 import * as jwt from "jsonwebtoken";
 
+const DEBUG = false;
+
 /**
  * Helper class for authentication against an EBS service. Allows the storage of a token to be accessed across componenents.
  * This is not meant to be a source of truth. Use only for presentational purposes.
  */
 export default class Authentication {
-    state: any = {};
+    state: any = {};    
+    serviceUrl: string;
     constructor(token: any, opaque_id: any) {
+
+        if (DEBUG) {
+            this.serviceUrl = "http://localhost:58394";
+        } else {
+            this.serviceUrl = "https://townofblakulla.shinobytes.com/ebs";
+        }
+
         this.state = {
             token,
             opaque_id,
@@ -71,11 +81,11 @@ export default class Authentication {
     }
 
     apiGet(method: string) {
-        return this.makeCall(`http://localhost:58394/api/blakulla/${method}`);
+        return this.makeCall(`${this.serviceUrl}/api/blakulla/${method}`);
     }
 
     apiPost(method: string, data: any = {}) {
-        return this.makeCall(`http://localhost:58394/api/blakulla/${method}`, "POST", data);
+        return this.makeCall(`${this.serviceUrl}/api/blakulla/${method}`, "POST", data);
     }
 
     /**

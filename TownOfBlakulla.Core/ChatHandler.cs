@@ -11,12 +11,16 @@ namespace TownOfBlakulla.Core
     public class ChatHandler : IChatHandler
     {
         private readonly IPlayerHandler playerHandler;
-        private readonly List<ChatMessage> chatMessages = new List<ChatMessage>();
+        private readonly IPropertyRepository propertyRepository;
+        private readonly List<ChatMessage> chatMessages;
         private readonly object mutex = new object();
 
-        public ChatHandler(IPlayerHandler playerHandler)
+        public ChatHandler(IPlayerHandler playerHandler, IPropertyRepository propertyRepository)
         {
             this.playerHandler = playerHandler;
+            this.propertyRepository = propertyRepository;
+            this.chatMessages = propertyRepository.Load<List<ChatMessage>>(nameof(chatMessages)) ??
+                                new List<ChatMessage>();
         }
 
         public async Task<IReadOnlyList<ChatMessage>> GetChatMessagesAsync(
@@ -27,7 +31,7 @@ namespace TownOfBlakulla.Core
             var elapsed = 0;
             var messages = GetChatMessages(viewerContext, channel, since);
             while (messages.Count == 0)
-            {                
+            {
                 elapsed += 50;
                 await Task.Delay(50);
                 messages = GetChatMessages(viewerContext, channel, since);
@@ -65,6 +69,7 @@ namespace TownOfBlakulla.Core
             {
                 var chatMessage = new ChatMessage(chatResponse.Username, chatResponse.Channel, chatResponse.Message);
                 chatMessages.Add(chatMessage);
+                propertyRepository.Save(nameof(chatMessages), chatMessages);
                 return chatMessage;
             }
         }
@@ -74,6 +79,7 @@ namespace TownOfBlakulla.Core
             lock (mutex)
             {
                 chatMessages.Clear();
+                propertyRepository.Save(nameof(chatMessages), chatMessages);
             }
         }
 

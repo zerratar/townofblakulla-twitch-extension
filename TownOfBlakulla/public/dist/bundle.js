@@ -169,21 +169,6 @@ exports.push([module.i, ".chat-log-row {\n  text-shadow: 1px 1px 2px #000000; }\
 
 /***/ }),
 
-/***/ "./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/lib/loader.js!./src/components/toggle-overlay-button.scss":
-/*!**********************************************************************************************************************************!*\
-  !*** ./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/lib/loader.js!./src/components/toggle-overlay-button.scss ***!
-  \**********************************************************************************************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-exports = module.exports = __webpack_require__(/*! ../../node_modules/css-loader/dist/runtime/api.js */ "./node_modules/css-loader/dist/runtime/api.js")(false);
-// Module
-exports.push([module.i, ".toggle-overlay-panel {\n  position: fixed;\n  top: 50%;\n  left: -30px;\n  transform: translate(0, -50%);\n  transition: all 0.25s ease; }\n\n.toggle-overlay-panel:hover {\n  left: 1px; }\n", ""]);
-
-
-
-/***/ }),
-
 /***/ "./node_modules/css-loader/dist/runtime/api.js":
 /*!*****************************************************!*\
   !*** ./node_modules/css-loader/dist/runtime/api.js ***!
@@ -5771,6 +5756,7 @@ module.exports = function (css) {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const jwt = __webpack_require__(/*! jsonwebtoken */ "./node_modules/jsonwebtoken/index.js");
+const DEBUG = false;
 /**
  * Helper class for authentication against an EBS service. Allows the storage of a token to be accessed across componenents.
  * This is not meant to be a source of truth. Use only for presentational purposes.
@@ -5778,6 +5764,12 @@ const jwt = __webpack_require__(/*! jsonwebtoken */ "./node_modules/jsonwebtoken
 class Authentication {
     constructor(token, opaque_id) {
         this.state = {};
+        if (DEBUG) {
+            this.serviceUrl = "http://localhost:58394";
+        }
+        else {
+            this.serviceUrl = "https://townofblakulla.shinobytes.com/ebs";
+        }
         this.state = {
             token,
             opaque_id,
@@ -5841,10 +5833,10 @@ class Authentication {
         }
     }
     apiGet(method) {
-        return this.makeCall(`http://localhost:58394/api/blakulla/${method}`);
+        return this.makeCall(`${this.serviceUrl}/api/blakulla/${method}`);
     }
     apiPost(method, data = {}) {
-        return this.makeCall(`http://localhost:58394/api/blakulla/${method}`, "POST", data);
+        return this.makeCall(`${this.serviceUrl}/api/blakulla/${method}`, "POST", data);
     }
     /**
      * Makes a call against a given endpoint using a specific method.
@@ -6350,7 +6342,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(/*! react */ "react");
 const game_state_1 = __webpack_require__(/*! ../game-state */ "./src/game-state.ts");
 const blakulla_service_1 = __webpack_require__(/*! ../blakulla-service */ "./src/blakulla-service.ts");
-const toggle_overlay_button_1 = __webpack_require__(/*! ./toggle-overlay-button */ "./src/components/toggle-overlay-button.tsx");
 __webpack_require__(/*! ./app.scss */ "./src/components/app.scss");
 const day_1 = __webpack_require__(/*! ./phases/day */ "./src/components/phases/day.tsx");
 const night_1 = __webpack_require__(/*! ./phases/night */ "./src/components/phases/night.tsx");
@@ -6376,23 +6367,23 @@ class App extends React.Component {
     //     <p>I have {this.service.auth.hasSharedId() ? `shared my ID, and my user_id is ${this.service.auth.getUserId()}` : 'not shared my ID'}.</p>
     // </div>
     render() {
-        if (!this.service.isReady || this.state.state == blakulla_service_1.GameStateType.INVALID || this.state.state == blakulla_service_1.GameStateType.NOT_STARTED) {
+        if (!this.state.isGameReady || !this.service.isReady || this.state.state == blakulla_service_1.GameStateType.INVALID || this.state.state == blakulla_service_1.GameStateType.NOT_STARTED) {
             return (React.createElement("div", { className: "App" }));
         }
-        if (this.state.isVisible) {
-            if (this.state.joined) {
-                return this.renderGame();
-            }
-            if (this.state.state == blakulla_service_1.GameStateType.JOINABLE) {
-                return this.renderJoinGame();
-            }
-            if (this.state.state == blakulla_service_1.GameStateType.STARTED) {
-                return this.renderStartedGame();
-            }
-            return this.renderInvalidGameState(this.state.state);
+        if (this.state.joined) {
+            return this.renderGame();
         }
-        return (React.createElement("div", { className: "App" },
-            React.createElement(toggle_overlay_button_1.ToggleOverlayButton, { onVisibilityChanged: this.visibilityChanged })));
+        if (this.state.state == blakulla_service_1.GameStateType.JOINABLE) {
+            return this.renderJoinGame();
+        }
+        if (this.state.state == blakulla_service_1.GameStateType.STARTED) {
+            return this.renderStartedGame();
+        }
+        return this.renderInvalidGameState(this.state.state);
+        // return (
+        //     <div className="App">
+        //         <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+        //     </div>);
     }
     renderGame() {
         let leave = React.createElement("button", { onClick: this.leaveGameAsync }, "Leave");
@@ -6414,8 +6405,8 @@ class App extends React.Component {
         if (this.state.joined && !this.state.lynched) {
         }
         const isMafia = this.service.isMafia(this.state.role);
+        // <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
         return (React.createElement("div", { className: "App" },
-            React.createElement(toggle_overlay_button_1.ToggleOverlayButton, { onVisibilityChanged: this.visibilityChanged }),
             React.createElement(game_menu_1.default, { service: this.service, lynched: this.state.lynched, mafia: isMafia }),
             leave,
             phase));
@@ -6428,21 +6419,21 @@ class App extends React.Component {
         if (this.state.waitForJoin || this.state.joined) {
             join = React.createElement("p", null, "Loading");
         }
+        // <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
         return (React.createElement("div", { className: "App" },
-            React.createElement(toggle_overlay_button_1.ToggleOverlayButton, { onVisibilityChanged: this.visibilityChanged }),
             React.createElement("div", { className: "join-panel" },
                 React.createElement("div", { className: "game-logo" },
                     React.createElement("img", { src: "./images/logo.png" })),
                 join)));
     }
     renderStartedGame() {
+        // <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
         return (React.createElement("div", { className: "App" },
-            React.createElement(toggle_overlay_button_1.ToggleOverlayButton, { onVisibilityChanged: this.visibilityChanged }),
             React.createElement("div", null, "Game has already started.")));
     }
     renderInvalidGameState(state) {
+        // <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
         return (React.createElement("div", { className: "App" },
-            React.createElement(toggle_overlay_button_1.ToggleOverlayButton, { onVisibilityChanged: this.visibilityChanged }),
             React.createElement("div", null,
                 "Invalid game state: ",
                 state)));
@@ -6480,6 +6471,7 @@ class App extends React.Component {
         }, (visibility) => this.visibilityChanged(visibility), (context, delta) => this.contextUpdate(context, delta));
     }
     componentWillUnmount() {
+        console.warn("app is unmounting");
         if (this.stateTimer)
             window.clearTimeout(this.stateTimer);
         if (this.chatTimer)
@@ -6508,6 +6500,9 @@ class App extends React.Component {
             const joined = !!result.name;
             const name = result.name || "";
             const role = result.role;
+            if (result.game) {
+                this.setGame(result.game);
+            }
             if (joined) {
                 this.rescheduleGetChatMessages();
             }
@@ -6545,19 +6540,7 @@ class App extends React.Component {
     updateGameState() {
         this.service.getStateAsync().then(result => {
             try {
-                let hasJoined = false;
-                let lynched = false;
-                let state = blakulla_service_1.GameStateType.INVALID;
-                let game = null;
-                if (result != null) {
-                    hasJoined = result.hasJoined;
-                    lynched = result.lynched;
-                    state = result.state;
-                    game = result.game;
-                }
-                this.setState(() => {
-                    return { joined: hasJoined, state: state, game: game, lynched };
-                });
+                this.setGameState(result);
             }
             finally {
                 this.rescheduleGetState();
@@ -6569,6 +6552,29 @@ class App extends React.Component {
             //      during that period of time. It is possible for anon to rejoin.
             // if in progress or not started, queue for next game (only shared id)
             // if in progress, leaving game is possible. But if player leaves on their own. Character commits suicide.
+        });
+    }
+    setGame(game) {
+        this.setState(() => {
+            return { game };
+        });
+    }
+    setGameState(gameState) {
+        let hasJoined = false;
+        let lynched = false;
+        let state = blakulla_service_1.GameStateType.INVALID;
+        let game = null;
+        let isGameReady = false;
+        if (gameState != null) {
+            hasJoined = gameState.hasJoined;
+            lynched = gameState.lynched;
+            state = gameState.state;
+            game = gameState.game;
+            isGameReady = true;
+        }
+        console.log(JSON.stringify(gameState));
+        this.setState(() => {
+            return { joined: hasJoined, state, game, lynched, isGameReady };
         });
     }
     addChatMessage(msg) {
@@ -6957,82 +6963,6 @@ exports.default = Night;
 
 /***/ }),
 
-/***/ "./src/components/toggle-overlay-button.scss":
-/*!***************************************************!*\
-  !*** ./src/components/toggle-overlay-button.scss ***!
-  \***************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-
-var content = __webpack_require__(/*! !../../node_modules/css-loader/dist/cjs.js!../../node_modules/sass-loader/lib/loader.js!./toggle-overlay-button.scss */ "./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/lib/loader.js!./src/components/toggle-overlay-button.scss");
-
-if(typeof content === 'string') content = [[module.i, content, '']];
-
-var transform;
-var insertInto;
-
-
-
-var options = {"hmr":true}
-
-options.transform = transform
-options.insertInto = undefined;
-
-var update = __webpack_require__(/*! ../../node_modules/style-loader/lib/addStyles.js */ "./node_modules/style-loader/lib/addStyles.js")(content, options);
-
-if(content.locals) module.exports = content.locals;
-
-if(false) {}
-
-/***/ }),
-
-/***/ "./src/components/toggle-overlay-button.tsx":
-/*!**************************************************!*\
-  !*** ./src/components/toggle-overlay-button.tsx ***!
-  \**************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(/*! react */ "react");
-__webpack_require__(/*! ./toggle-overlay-button.scss */ "./src/components/toggle-overlay-button.scss");
-class ToggleOverlayButtonState {
-    constructor() {
-        this.isVisible = false;
-    }
-}
-exports.ToggleOverlayButtonState = ToggleOverlayButtonState;
-class ToggleOverlayButton extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = new ToggleOverlayButtonState();
-        this.toggleOverlayVisibility = this.toggleOverlayVisibility.bind(this);
-    }
-    render() {
-        if (this.state.isVisible) {
-            return (React.createElement("div", { className: "toggle-overlay-panel" },
-                React.createElement("button", { onClick: this.toggleOverlayVisibility }, "\u00D7")));
-        }
-        return (React.createElement("div", { className: "toggle-overlay-panel" },
-            React.createElement("button", { onClick: this.toggleOverlayVisibility }, "\u25BA")));
-    }
-    toggleOverlayVisibility() {
-        const visibility = !this.state.isVisible;
-        if (this.props.onVisibilityChanged)
-            this.props.onVisibilityChanged(visibility);
-        this.setState(() => {
-            return { isVisible: visibility };
-        });
-    }
-}
-exports.ToggleOverlayButton = ToggleOverlayButton;
-
-
-/***/ }),
-
 /***/ "./src/game-state.ts":
 /*!***************************!*\
   !*** ./src/game-state.ts ***!
@@ -7054,6 +6984,7 @@ class GameState {
         this.joined = false;
         this.state = -1;
         this.lynched = false;
+        this.isGameReady = false;
         this.isVisible = false;
         this.waitForJoin = false;
         this.waitForLeave = false;

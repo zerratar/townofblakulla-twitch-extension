@@ -38,32 +38,28 @@ export class App extends React.Component<AppProps, GameState> {
     // </div>
 
     render() {
-
-        if (!this.service.isReady || this.state.state == GameStateType.INVALID || this.state.state == GameStateType.NOT_STARTED) {
+        if (!this.state.isGameReady || !this.service.isReady || this.state.state == GameStateType.INVALID || this.state.state == GameStateType.NOT_STARTED) {
             return (<div className="App"></div>);
         }
 
-        if (this.state.isVisible) {
-
-            if (this.state.joined) {
-                return this.renderGame();
-            }
-
-            if (this.state.state == GameStateType.JOINABLE) {
-                return this.renderJoinGame();
-            }
-
-            if (this.state.state == GameStateType.STARTED) {
-                return this.renderStartedGame();
-            }
-
-            return this.renderInvalidGameState(this.state.state);
+        if (this.state.joined) {
+            return this.renderGame();
         }
 
-        return (
-            <div className="App">
-                <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
-            </div>);
+        if (this.state.state == GameStateType.JOINABLE) {
+            return this.renderJoinGame();
+        }
+
+        if (this.state.state == GameStateType.STARTED) {
+            return this.renderStartedGame();
+        }
+
+        return this.renderInvalidGameState(this.state.state);
+
+        // return (
+        //     <div className="App">
+        //         <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+        //     </div>);
     }
 
     renderGame() {
@@ -95,9 +91,10 @@ export class App extends React.Component<AppProps, GameState> {
         if (this.state.joined && !this.state.lynched) {
 
         }
+
         const isMafia = this.service.isMafia(this.state.role);
+        // <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
         return (<div className="App">
-                    <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
                     <GameMenu service={this.service} lynched={this.state.lynched} mafia={isMafia} />
                     {leave}
                     {phase}                
@@ -116,10 +113,9 @@ export class App extends React.Component<AppProps, GameState> {
         if (this.state.waitForJoin || this.state.joined) {
             join = <p>Loading</p>;
         }
-
+        // <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
         return (
-            <div className="App">
-                <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+            <div className="App">                
                 <div className="join-panel">
                     <div className="game-logo">
                         <img src="./images/logo.png"></img>
@@ -131,9 +127,9 @@ export class App extends React.Component<AppProps, GameState> {
     }
 
     renderStartedGame() {
+        // <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
         return (
-            <div className="App">
-                <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+            <div className="App">                
                 <div>Game has already started.</div>
             </div>
         )
@@ -141,9 +137,9 @@ export class App extends React.Component<AppProps, GameState> {
 
 
     renderInvalidGameState(state: number) {
+        // <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
         return (
-            <div className="App">
-                <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
+            <div className="App">                
                 <div>Invalid game state: {state}</div>
             </div>
         )
@@ -190,6 +186,7 @@ export class App extends React.Component<AppProps, GameState> {
     }
     
     componentWillUnmount() {
+        console.warn("app is unmounting");
         if (this.stateTimer) window.clearTimeout(this.stateTimer);
         if (this.chatTimer) window.clearTimeout(this.chatTimer);
         this.service.dispose();
@@ -221,6 +218,10 @@ export class App extends React.Component<AppProps, GameState> {
         const joined = !!result.name;
         const name = result.name || "";
         const role = result.role;
+
+        if (result.game) {
+            this.setGame(result.game);
+        }
 
         if (joined) {
             this.rescheduleGetChatMessages();            
@@ -267,21 +268,7 @@ export class App extends React.Component<AppProps, GameState> {
     private updateGameState(): void {
         this.service.getStateAsync().then(result => {
             try {
-                
-                let hasJoined = false;
-                let lynched = false;
-                let state = GameStateType.INVALID;
-                let game: GameInfo = null;
-                if (result != null) {
-                    hasJoined = result.hasJoined;
-                    lynched = result.lynched;
-                    state = result.state;                 
-                    game = result.game;
-                } 
-
-                this.setState(() => {
-                    return { joined: hasJoined, state: state, game: game, lynched };
-                })
+                this.setGameState(result);
             } finally {
                 this.rescheduleGetState();
             }
@@ -295,6 +282,34 @@ export class App extends React.Component<AppProps, GameState> {
             // if in progress or not started, queue for next game (only shared id)
             // if in progress, leaving game is possible. But if player leaves on their own. Character commits suicide.
         });
+    }
+
+    setGame(game:any): void {        
+        this.setState(() => {
+            return { game };
+        })
+    }
+
+    setGameState(gameState: any): void {
+        let hasJoined = false;
+        let lynched = false;
+        let state = GameStateType.INVALID;
+        let game: GameInfo = null;
+        let isGameReady = false;
+
+        if (gameState != null) {
+            hasJoined = gameState.hasJoined;
+            lynched = gameState.lynched;
+            state = gameState.state;                 
+            game = gameState.game;
+            isGameReady = true;
+        }
+
+        console.log(JSON.stringify(gameState));
+
+        this.setState(() => {
+            return { joined: hasJoined, state, game, lynched, isGameReady };
+        })
     }
 
     addChatMessage(msg: ChatMessage): void {
