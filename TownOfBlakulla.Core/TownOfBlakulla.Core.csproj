@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dapper" Version="1.60.6" />
     <PackageReference Include="TwitchLib.Extension" Version="1.3.0" />
     <PackageReference Include="TwitchLib.Extension.Core" Version="1.3.0" />
   </ItemGroup>

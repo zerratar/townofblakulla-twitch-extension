@@ -88,16 +88,14 @@ export class App extends React.Component<AppProps, GameState> {
             phase = <p></p>;
         }      
         
-        if (this.state.joined && !this.state.lynched) {
-
-        }
+        // this.state.game
 
         const isMafia = this.service.isMafia(this.state.role);
         // <ToggleOverlayButton onVisibilityChanged={this.visibilityChanged} />
         return (<div className="App">
-                    <GameMenu service={this.service} lynched={this.state.lynched} mafia={isMafia} />
+                    <GameMenu service={this.service} lynched={this.state.lynched} mafia={isMafia} abilityArgs={this.state.abilityArgs} />
                     {leave}
-                    {phase}                
+                    {phase}                 
                 </div>);
     }
 
@@ -296,19 +294,21 @@ export class App extends React.Component<AppProps, GameState> {
         let state = GameStateType.INVALID;
         let game: GameInfo = null;
         let isGameReady = false;
+        let abilityArgs:string[] = [];
 
         if (gameState != null) {
             hasJoined = gameState.hasJoined;
             lynched = gameState.lynched;
             state = gameState.state;                 
             game = gameState.game;
+            abilityArgs = gameState.abilityArgs;
             isGameReady = true;
         }
 
         console.log(JSON.stringify(gameState));
 
         this.setState(() => {
-            return { joined: hasJoined, state, game, lynched, isGameReady };
+            return { joined: hasJoined, state, game, lynched, isGameReady, abilityArgs };
         })
     }
 

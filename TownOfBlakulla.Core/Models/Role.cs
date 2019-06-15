@@ -5,6 +5,9 @@ namespace TownOfBlakulla.Core.Models
 {
     public class Role
     {
+        private const string Night = "Night";
+        private const string Day = "Day";
+
         public Role(string name, string alignment, string summary, string abilities, string attribute)
         {
             Name = name;
@@ -29,7 +32,7 @@ namespace TownOfBlakulla.Core.Models
 
             if (player.Lynched)
             {
-                return null;
+                return new string[0];
             }
 
             switch (this.Name)
@@ -41,6 +44,7 @@ namespace TownOfBlakulla.Core.Models
                 case "Jailor": return GetJailorArguments(player, context);
                 case "Doctor": return GetDoctorArguments(player, context);
                 case "Bodyguard": return GetBodyguardArguments(player, context);
+
                 /*
                  * Mafia
                  */
@@ -48,6 +52,7 @@ namespace TownOfBlakulla.Core.Models
                 case "Godfather": return GetGodfatherArguments(player, context);
                 case "Janitor": return GetJanitorArguments(player, context);
                 case "Blackmailer": return GetBlackmailerArguments(player, context);
+
                 /*
                  * Neutral
                  */
@@ -55,53 +60,71 @@ namespace TownOfBlakulla.Core.Models
                 case "Survivor": return GetSurvivorArguments(player, context);
             }
 
-            return null;
+            return new string[0];
         }
 
         private string[] GetSurvivorArguments(PlayerInfo player, GameContext context)
         {
-            return null;
+            if (context.GameState.PhaseName != Day)
+            {
+                return new string[0];
+            }
+
+            return new string[] { "" };
         }
 
         private string[] GetSerialKillerArguments(PlayerInfo player, GameContext context)
         {
-            return null;
+            return AnyoneDuringNight(player, context);
         }
 
         private string[] GetBlackmailerArguments(PlayerInfo player, GameContext context)
         {
-            return null;
+            return GetMafiosoArguments(player, context);
         }
 
         private string[] GetJanitorArguments(PlayerInfo player, GameContext context)
         {
-            return null;
+            return AnyoneDuringNight(player, context);
         }
 
         private string[] GetGodfatherArguments(PlayerInfo player, GameContext context)
         {
-            return null;
+            return GetMafiosoArguments(player, context);
         }
 
         private string[] GetMafiosoArguments(PlayerInfo player, GameContext context)
         {
-            return null;
+            if (context.GameState.PhaseName != Night)
+            {
+                return new string[0];
+            }
+
+            // crashes here for some reason
+            // x.Role == null?
+            // gameState players == null?
+
+            // TODO(Zerratar): fixme! Not all players have an assigned role. Why? We need to debug this!
+
+            return context.GameState.Players
+                .Where(x => !x.Lynched && x != player && x.Role.Alignment != Alignment)
+                .Select(x => x.Name)
+                .ToArray();
         }
 
         private string[] GetBodyguardArguments(PlayerInfo player, GameContext context)
         {
-            return null;
+            return AnyoneDuringNight(player, context);
         }
 
         private string[] GetDoctorArguments(PlayerInfo player, GameContext context)
         {
-            if (context.GameState.PhaseName != "Night")
+            if (context.GameState.PhaseName != Night)
             {
-                return null;
+                return new string[0];
             }
 
             // TODO(Zerratar): Need to limit the use of healing themselves.
-
             return context.GameState.Players
                 .Where(x => !x.Lynched)
                 .Select(x => x.Name)
@@ -110,32 +133,42 @@ namespace TownOfBlakulla.Core.Models
 
         private string[] GetJailorArguments(PlayerInfo player, GameContext context)
         {
-            if (context.GameState.PhaseName != "Day")
-            {
-                return null;
-            }
-
-            return context.GameState.Players
-                .Where(x => x.Name != player.Name && !x.Lynched)
-                .Select(x => x.Name)
-                .ToArray();
+            return AnyoneDuringDay(player, context);
         }
 
         private string[] GetJesterArguments(PlayerInfo player, GameContext context)
         {
             // TODO(Zerratar): We need to know who voted guilty and who abstained from voting
-            return null;
+            return new string[0];
         }
 
         private string[] GetMayorArguments(PlayerInfo player, GameContext context)
         {
-            if (player.RevealedAsMayor || context.GameState.PhaseName != "Day")
+            if (player.RevealedAsMayor || context.GameState.PhaseName != Day)
             {
-                return null;
+                return new string[0];
             }
 
             // note(Zerratar): Leaving an empty string is still an "option", but is not targeting a player.
             return new[] { "" };
+        }
+
+        private static string[] AnyoneDuringDay(PlayerInfo player, GameContext context)
+        {
+            return context.GameState.PhaseName == Day ? Anyone(player, context) : null;
+        }
+
+        private static string[] AnyoneDuringNight(PlayerInfo player, GameContext context)
+        {
+            return context.GameState.PhaseName == Night ? Anyone(player, context) : null;
+        }
+
+        private static string[] Anyone(PlayerInfo player, GameContext context)
+        {
+            return context.GameState.Players
+                .Where(x => !x.Lynched && x != player)
+                .Select(x => x.Name)
+                .ToArray();
         }
     }
 }

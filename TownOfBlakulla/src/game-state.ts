@@ -23,6 +23,7 @@ export default class GameState {
     public joined: boolean = false;    
     public state: number = -1;
     public lynched: boolean = false;
+    public abilityArgs: string[] = [];
 
     public isGameReady: boolean = false;
 
@@ -40,6 +41,7 @@ export class GameInfo {
     public subPhase: string = null;
     public subPhaseStart: Date = null;
     public subPhaseDuration:number = 0;
+
 }
 
 export class Player {

@@ -5,13 +5,15 @@ export interface GameMenuProps {
     service: BlakullaService;
     lynched: boolean;
     mafia: boolean;
+    abilityArgs: string[];
 }
 
 export interface GameMenuState {
     lastWill: string;
     deathNote: string;
     lastWillVisible: boolean;
-    deathNoteVisible: boolean;
+    deathNoteVisible: boolean;    
+    abilityUseVisible: boolean;
 }
 
 export default class GameMenu extends React.Component<GameMenuProps, GameMenuState> {
@@ -20,28 +22,36 @@ export default class GameMenu extends React.Component<GameMenuProps, GameMenuSta
     constructor(props:GameMenuProps) {
         super(props);
 
-        this.state = { lastWill: "", deathNote: "", lastWillVisible: false, deathNoteVisible: false };
+        this.state = { lastWill: "", deathNote: "", lastWillVisible: false, deathNoteVisible: false, abilityUseVisible: false };
 
         this.service = props.service;
         this.onLastWillChanged = this.onLastWillChanged.bind(this);
         this.onDeathNoteChanged = this.onDeathNoteChanged.bind(this);
         this.toggleLastWill = this.toggleLastWill.bind(this);
         this.toggleDeathNote = this.toggleDeathNote.bind(this);
+        this.toggleAbilityUse = this.toggleAbilityUse.bind(this);
         this.updateLastWillAsync = this.updateLastWillAsync.bind(this);
         this.updateDeathNoteAsync = this.updateDeathNoteAsync.bind(this);
     }
 
     public render() {
 
-        const inputPanel = this.state.lastWillVisible 
-            ? this.renderLastWill()
-            : this.state.deathNoteVisible && this.props.mafia
-                ? this.renderDeathNote()
-                : null;
+        const inputPanel = 
+        this.state.abilityUseVisible
+            ? this.renderAbilityUse()
+            : this.state.lastWillVisible 
+                ? this.renderLastWill()
+                : this.state.deathNoteVisible && this.props.mafia
+                    ? this.renderDeathNote()
+                    : null;
 
 
         const deathNoteButton = this.props.mafia
             ? (<button onClick={this.toggleDeathNote}>DESU NOTO?</button>)
+            : null;
+            
+        const abilityButton = this.props.abilityArgs && this.props.abilityArgs.length > 0
+            ? (<button onClick={this.toggleAbilityUse}>Ability</button>)
             : null;
 
         return (
@@ -49,6 +59,7 @@ export default class GameMenu extends React.Component<GameMenuProps, GameMenuSta
                 <div className="menu-items">
                     <button onClick={this.toggleLastWill}>LAST WILLY?</button>
                     {deathNoteButton}
+                    {abilityButton}
                 </div>
                 {inputPanel}
             </div>
@@ -63,6 +74,16 @@ export default class GameMenu extends React.Component<GameMenuProps, GameMenuSta
             </div>            
         );
     }
+
+    private renderAbilityUse() {
+        return (
+            <div className="input-panel">
+                {this.props.abilityArgs.map((x,i) => {
+                    return (<button key={`ability-${i}`} onClick={this.useAbility} data-value={x}>{x}</button>)
+                })}
+            </div>
+        );
+    }
     
     private renderLastWill() {
         return (
@@ -71,6 +92,10 @@ export default class GameMenu extends React.Component<GameMenuProps, GameMenuSta
                 <button onClick={this.updateLastWillAsync}>Save</button>
             </div>            
         );
+    }
+    
+    private toggleAbilityUse() {
+        this.setState({abilityUseVisible: !this.state.abilityUseVisible, lastWillVisible: false, deathNoteVisible: false});
     }
 
     private toggleDeathNote() {
@@ -107,5 +132,10 @@ export default class GameMenu extends React.Component<GameMenuProps, GameMenuSta
         } finally {
             this.toggleDeathNote();
         }
+    }
+
+    private useAbility(event: React.MouseEvent<HTMLButtonElement, MouseEvent>): void {
+        var ability = event.currentTarget.dataset.value;
+        console.log("use ability: " + ability);
     }
 }

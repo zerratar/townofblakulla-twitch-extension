@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using TownOfBlakulla.Core;
+using TownOfBlakulla.Core.Db;
 using TownOfBlakulla.Core.Handlers;
 using TwitchLib.Extension;
 using TwitchLib.Extension.Core.Authentication;
@@ -14,20 +16,13 @@ using TwitchLib.Extension.Core.ExtensionsManager;
 
 namespace TownOfBlakulla.EBS
 {
-    public class AppSettings
-    {
-        public string ExtensionOwnerId { get; set; }
-        public string ExtensionVersionNumber { get; set; }
-        public string ExtensionId { get; set; }
-        public string ExtensionSecret { get; set; }
-    }
-
     public class Startup
     {
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
         }
+
 
         public IConfiguration Configuration { get; }
 
@@ -41,7 +36,11 @@ namespace TownOfBlakulla.EBS
                 options.AddPolicy("AllowAllHeaders", builder => builder.AllowAnyHeader());
             });
 
-            services.AddSingleton<IPropertyRepository, JsonFileBasedPropertyRepository>();
+
+            services.AddSingleton<IDbConnectionFactory, MSSQLDbConnectionFactory>();
+            services.AddSingleton<IDbConnectionSettings, MSSQLDbConnectionSettings>();
+            //services.AddSingleton<IPropertyRepository, JsonFileBasedPropertyRepository>();
+            services.AddSingleton<IPropertyRepository, MSSQLBasedPropertyRepository>();
             services.AddSingleton<ILogger, ConsoleLogger>();
             services.AddSingleton<ITwitchAuth, TwitchAuth>();
             services.AddSingleton<IActionQueue, ActionQueue>();
@@ -57,13 +56,11 @@ namespace TownOfBlakulla.EBS
 
             services.AddSession(options =>
             {
-                // Set a short timeout for easy testing.
                 options.IdleTimeout = TimeSpan.FromHours(2);
                 options.Cookie.HttpOnly = true;
-                // Make the session cookie essential
                 options.Cookie.IsEssential = true;
             });
-            
+
             services
                 .AddAuthentication()
                 .AddTwitchExtensionAuth();
@@ -103,6 +100,15 @@ namespace TownOfBlakulla.EBS
             app.UseMvc();
 
             var settings = app.ApplicationServices.GetService<IOptions<AppSettings>>()?.Value ?? new AppSettings();
+
+
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                {
+                    var propRepo = app.ApplicationServices.GetService<IPropertyRepository>();
+                    if (e.ExceptionObject is Exception exc)
+                        propRepo.Save("last-error", JsonConvert.SerializeObject(exc));
+                };
+
             app.UseTwitchExtensionManager(app.ApplicationServices, new Dictionary<string, ExtensionBase>
             {
                 {
