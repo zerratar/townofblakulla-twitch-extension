@@ -23,7 +23,7 @@
     "hapi": "^17.8.4",
     "inert": "^5.1.0",
     "json-parse-better-errors": "^1.0.2",
-    "jsonwebtoken": "^8.2.0",
+    "jsonwebtoken": "^9.0.0",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
     "request": "^2.85.0",
